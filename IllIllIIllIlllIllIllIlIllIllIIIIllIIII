@@ -1,0 +1,527 @@
+-- =======================
+--     Macro Functionality
+-- =======================
+
+local SpeedGlitch = false
+local Mouse = game.Players.LocalPlayer:GetMouse()
+
+Mouse.KeyDown:Connect(function(Key)
+    if Key == string.lower(Miscellaneous['Macro'].KeyBind) and Miscellaneous['Macro'].BypassMacroAbuse == false then
+        if Miscellaneous['Macro'].Enabled then
+            SpeedGlitch = not SpeedGlitch
+            if SpeedGlitch == true then
+                repeat
+                    task.wait(Miscellaneous['Macro'].Speed / 100)
+                    game:GetService("VirtualInputManager"):SendKeyEvent(true, "I", false, game)
+                    task.wait(Miscellaneous['Macro'].Speed / 100)
+                    game:GetService("VirtualInputManager"):SendKeyEvent(true, "O", false, game)
+                until SpeedGlitch == false
+            end
+        end
+    end
+end)
+
+Mouse.KeyDown:Connect(function(Key)
+    if Key == string.lower(Miscellaneous['Macro'].KeyBind) and Miscellaneous['Macro'].BypassMacroAbuse == true then
+        if Miscellaneous['Macro'].Enabled then
+            SpeedGlitch = not SpeedGlitch
+            if SpeedGlitch == true then
+                repeat
+                    task.wait(Miscellaneous['Macro'].Speed / 100)
+                    game:GetService("VirtualInputManager"):SendMouseWheelEvent("0", "0", true, game)
+                    task.wait(Miscellaneous['Macro'].Speed / 100)
+                    game:GetService("VirtualInputManager"):SendMouseWheelEvent("0", "0", false, game)
+                until SpeedGlitch == false
+            end
+        end
+    end
+end)
+-- =======================
+--     InfiniteZoom Implementation
+-- =======================
+
+if Miscellaneous.Movement.InfiniteZoom then
+    local player = game.Players.LocalPlayer
+    player.CameraMaxZoomDistance = math.huge  -- Allow infinite zoom out
+    player.CameraMinZoomDistance = 0.5  -- Optionally set a custom min zoom distance if needed
+end
+-- =======================
+--     NoSlow and JumpPower Hook Implementation
+-- =======================
+
+local UserInputService = game:GetService("UserInputService")
+local shiftHeld = false  -- Track if shift is held for sprinting
+
+if Miscellaneous.Movement.NoSlow then
+    -- Remove Slowdowns (Reload, Shooting, Etc.)
+    local function removeSlowdown(character)
+        if character and character:FindFirstChildOfClass("Humanoid") then
+            local humanoid = character:FindFirstChildOfClass("Humanoid")
+            humanoid.WalkSpeed = 16  -- Default walk speed
+            humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+                if not shiftHeld then
+                    humanoid.WalkSpeed = 16  -- Reset walk speed to default when not sprinting
+                end
+            end)
+        end
+    end
+
+    -- Apply to existing characters
+    for _, player in pairs(game.Players:GetPlayers()) do
+        if player.Character then
+            removeSlowdown(player.Character)
+        end
+    end
+
+    -- Apply to new characters as they spawn
+    game.Players.PlayerAdded:Connect(function(player)
+        player.CharacterAdded:Connect(removeSlowdown)
+    end)
+
+    -- Stop NoSlow when sprinting (Shift held)
+    UserInputService.InputBegan:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
+            shiftHeld = true
+        end
+    end)
+
+    -- Re-enable NoSlow when sprinting stops (Shift released)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
+            shiftHeld = false
+        end
+    end)
+end
+
+-- =======================
+--     Hook to Prevent JumpPower Changes
+-- =======================
+
+if Miscellaneous.Movement.NoJumpPowerChange then
+    if not game.IsLoaded(game) then 
+        game.Loaded:Wait()
+    end
+
+    -- Hooking JumpPower changes
+    local IsA = game.IsA;
+    local newindex = nil 
+
+    newindex = hookmetamethod(game, "__newindex", function(self, Index, Value)
+        if not checkcaller() and IsA(self, "Humanoid") and Index == "JumpPower" then 
+            return
+        end
+        
+        return newindex(self, Index, Value);
+    end)
+end
+-- Function to change the FOV
+function ChangeFOV(fovValue)
+    if Miscellaneous.FOVChanger.Enabled then
+        game.Workspace.CurrentCamera.FieldOfView = fovValue
+    end
+end
+
+-- Immediately apply FOV on script load
+ChangeFOV(Miscellaneous.FOVChanger.FOV)
+
+-- Auto360 spin functionality
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+local Toggle = false -- Initialize Toggle to false
+
+local function Auto360()
+    if Miscellaneous.Auto360.Enabled == true then
+        local RotationSpeed = Miscellaneous.Auto360.SpinSpeed
+        local Keybind = Miscellaneous.Auto360.Keybind
+        
+        local function OnKeyPress(Input, GameProcessedEvent)
+            if Input.KeyCode == Keybind and not GameProcessedEvent then 
+                Toggle = not Toggle
+            end
+        end
+        
+        UserInputService.InputBegan:Connect(OnKeyPress)
+        
+        local LastRenderTime = 0
+        local TotalRotation = 0
+        
+        local function RotateCamera()
+            if Toggle then
+                local CurrentTime = tick()
+                local TimeDelta = math.min(CurrentTime - LastRenderTime, 0.01)
+                LastRenderTime = CurrentTime
+        
+                local RotationAngle = RotationSpeed * TimeDelta
+                local Rotation = CFrame.fromAxisAngle(Vector3.new(0, 1, 0), math.rad(RotationAngle))
+                Camera.CFrame = Camera.CFrame * Rotation
+        
+                TotalRotation = TotalRotation + RotationAngle
+                if TotalRotation >= Miscellaneous.Auto360.Degrees then 
+                    Toggle = false
+                    TotalRotation = 0
+                end
+            end
+        end
+        
+        RunService.RenderStepped:Connect(RotateCamera)
+    end
+end
+
+-- Start Auto360
+Auto360()
+function Vnly_findNearestEnemy()
+    local ClosestDistance, ClosestPlayer = math.huge, nil
+    local CenterPosition = Vector2.new(game:GetService("GuiService"):GetScreenResolution().X / 2, game:GetService("GuiService"):GetScreenResolution().Y / 2)
+
+    for _, Player in ipairs(game:GetService("Players"):GetPlayers()) do
+        if Player ~= game.Players.LocalPlayer then
+            local Character = Player.Character
+            if Character and Character:FindFirstChild("HumanoidRootPart") and Character:FindFirstChild("Humanoid") and Character.Humanoid.Health > 0 then
+                local Position, IsVisibleOnViewport = workspace.CurrentCamera:WorldToViewportPoint(Character.HumanoidRootPart.Position)
+                if IsVisibleOnViewport then
+                    local Distance = (CenterPosition - Vector2.new(Position.X, Position.Y)).Magnitude
+                    if Distance < ClosestDistance then
+                        ClosestPlayer = Character.HumanoidRootPart
+                        ClosestDistance = Distance
+                    end
+                end
+            end
+        end
+    end
+
+    return ClosestPlayer
+end
+
+function Vnly_getPredictedPosition(Player)
+    if not Player or not Player.Position then return Vector3.new(0, 0, 0) end -- Added safety check
+    local velocity = Player.Velocity or Vector3.new(0, 0, 0)
+    local predictedPosition = Player.Position + (velocity * Camlock.Prediction.Multiplier)
+    return predictedPosition
+end
+
+function Vnly_GetShakedVector3(Intensity)
+    return Vector3.new(math.random(-Intensity * 1e9, Intensity * 1e9), math.random(-Intensity * 1e9, Intensity * 1e9), math.random(-Intensity * 1e9, Intensity * 1e9)) / 1e9;
+end
+
+local enemyCamlock = nil
+game:GetService("RunService").RenderStepped:Connect(function()
+    if Camlock.Enabled and Camlock.Active and enemyCamlock and enemyCamlock.Parent and enemyCamlock.Parent:FindFirstChild("HumanoidRootPart") then
+        local humanoidRootPart = enemyCamlock.Parent.HumanoidRootPart
+        local predictedPosition = Vnly_getPredictedPosition(humanoidRootPart)
+
+        local adjustedPosition = predictedPosition + Vector3.new(
+            Camlock.Prediction.XOffset,
+            Camlock.Prediction.YOffset,
+            Camlock.Prediction.ZOffset
+        ) + Vnly_GetShakedVector3(Camlock.Shake.Intensity)
+
+        local camera = workspace.CurrentCamera
+        local Main = CFrame.new(camera.CFrame.p, adjustedPosition)
+        camera.CFrame = camera.CFrame:Lerp(Main, Camlock.Aimbot.CameraSmoothing, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut)
+    else
+        -- Optionally reset the camera when enemyCamlock is nil or inactive
+        -- camera.CFrame = CFrame.new(camera.CFrame.Position)
+    end
+end)
+
+local UIS = game:GetService("UserInputService")
+UIS.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Camlock.Key then
+        Camlock.Active = not Camlock.Active
+
+        if Camlock.Active then
+            enemyCamlock = Vnly_findNearestEnemy()
+            if enemyCamlock and Camlock.NOTIF then
+                game.StarterGui:SetCore("SendNotification", {
+                    Title = "Camlock",
+                    Text = "Locked on: " .. tostring(enemyCamlock.Parent.Name),
+                    Icon = "http://www.roblox.com/asset/?id=8850953349",
+                    Duration = 1,
+                })
+            end
+        else
+            enemyCamlock = nil
+            if Camlock.NOTIF then
+                game.StarterGui:SetCore("SendNotification", {
+                    Title = "Camlock",
+                    Text = "Unlocked Camlock",  -- Consider changing to "No Target Locked" if enemyCamlock is nil
+                    Icon = "http://www.roblox.com/asset/?id=8850953349",
+                    Duration = 1,
+                })
+            end
+        end
+    end
+end)
+local holding = false
+local autoShootActive = false
+local autoShootRunning = false
+
+-- Function to handle shooting logic
+local function autoShoot()
+    autoShootRunning = true
+    while autoShootActive and AutoShoot.Enabled do
+        -- Trigger shooting action
+        mouse1click()  -- Simulate left mouse click to shoot
+        wait(AutoShoot.Delay)  -- Apply the delay between shots
+    end
+    autoShootRunning = false
+end
+
+-- Function to handle Toggle and Hold mode
+local function handleAutoShoot()
+    if AutoShoot.Mode == "Toggle" then
+        autoShootActive = not autoShootActive  -- Toggle the state
+        if autoShootActive and not autoShootRunning then
+            spawn(autoShoot)
+        end
+        if AutoShoot.NOTIF then
+            game.StarterGui:SetCore("SendNotification", {
+                Title = "AutoShoot",
+                Text = autoShootActive and "Enabled" or "Disabled",
+                Duration = 2
+            })
+        end
+    elseif AutoShoot.Mode == "Hold" then
+        if holding and not autoShootRunning then
+            autoShootActive = true
+            spawn(autoShoot)
+        elseif not holding then
+            autoShootActive = false
+        end
+    end
+end
+
+-- Handle key press
+game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
+    if not gameProcessed and input.KeyCode == AutoShoot.Key and AutoShoot.Enabled then
+        if AutoShoot.Mode == "Hold" then
+            holding = true
+            handleAutoShoot()
+        elseif AutoShoot.Mode == "Toggle" then
+            handleAutoShoot()  -- Toggle mode
+        end
+    end
+end)
+
+-- Handle key release for Hold mode
+game:GetService("UserInputService").InputEnded:Connect(function(input)
+    if input.KeyCode == AutoShoot.Key and AutoShoot.Mode == "Hold" and AutoShoot.Enabled then
+        holding = false
+        handleAutoShoot()
+    end
+end)
+-- Function to smoothly transition between rainbow colors
+function Vnly_getRainbowColor(tick)
+    local hue = tick % 1
+    return Color3.fromHSV(hue, 1, 1)
+end
+
+function Vnly_applyPulsate(dot)
+    if DotCustomization.Effects.Pulsate then
+        spawn(function()
+            while DotCustomization.Effects.Pulsate do
+                local initialSize = 1
+                local targetSize = math.random(120, 200) / 100
+                local duration = 0.1
+                local steps = 30
+
+                for i = 0, steps do
+                    local alpha = i / steps
+                    local newSize = initialSize + (targetSize - initialSize) * alpha
+                    dot.Size = UDim2.new(newSize, 0, newSize, 0)
+                    wait(duration / steps)
+                end
+
+                for i = 0, steps do
+                    local alpha = i / steps
+                    dot.Size = UDim2.new(targetSize - (targetSize - initialSize) * alpha, 0, targetSize - (targetSize - initialSize) * alpha, 0)
+                    wait(duration / steps)
+                end
+            end
+        end)
+    end
+end
+
+local SelectedPart = "HumanoidRootPart"
+local CC = game:GetService("Workspace").CurrentCamera
+local Plr
+local enabled = false
+local mouse = game.Players.LocalPlayer:GetMouse()
+local placemarker = Instance.new("Part", game.Workspace)
+local connection -- For Stepped event
+
+function Vnly_makemarker(Parent, Adornee, Color, Size, Size2)
+    local e = Instance.new("BillboardGui", Parent)
+    e.Name = "PP"
+    e.Adornee = Adornee
+    e.Size = UDim2.new(Size * DotCustomization.DotSize, Size2, Size * DotCustomization.DotSize, Size2)
+    e.AlwaysOnTop = Dotlock.DOT
+
+    local a = Instance.new("Frame", e)
+    a.Size = UDim2.new(1, 0, 1, 0)
+    a.BackgroundTransparency = 1
+
+    if DotCustomization.Shape == "Circle" then
+        local uicorner = Instance.new("UICorner", a)
+        uicorner.CornerRadius = UDim.new(1, 0)
+    elseif DotCustomization.Shape == "Skull" then
+        local skull = Instance.new("ImageLabel", a)
+        skull.Image = "http://www.roblox.com/asset/?id=8850953349"
+        skull.Size = UDim2.new(1, 0, 1, 0)
+        skull.BackgroundTransparency = 1
+        return skull
+    end
+
+    local outline = Instance.new("UIStroke", a)
+    if DotCustomization.Effects.Rainbow then
+        spawn(function()
+            while DotCustomization.Effects.Rainbow do
+                outline.Color = Vnly_getRainbowColor(tick())
+                wait(0.1)
+            end
+        end)
+    else
+        outline.Color = DotCustomization.DotColor
+    end
+
+    outline.Thickness = DotCustomization.OutlineThickness
+    outline.Transparency = DotCustomization.Transparency
+
+    Vnly_applyPulsate(a)
+
+    return e
+end
+
+local data = game.Players:GetPlayers()
+function Vnly_noob(player)
+    local character
+    repeat wait() until player.Character
+    local handler = Vnly_makemarker(guimain, player.Character:WaitForChild(SelectedPart), Color3.fromRGB(68, 214, 44), 0.6, 3)
+    handler.Name = player.Name
+    player.CharacterAdded:connect(function(Char) handler.Adornee = Char:WaitForChild(SelectedPart) end)
+end
+
+for i = 1, #data do
+    if data[i] ~= game.Players.LocalPlayer then
+        Vnly_noob(data[i])
+    end
+end
+
+game.Players.PlayerAdded:connect(function(Player)
+    Vnly_noob(Player)
+end)
+
+spawn(function()
+    placemarker.Anchored = true
+    placemarker.CanCollide = false
+    if Dotlock.DOT == true then
+        placemarker.Size = Vector3.new(6, 6, 6)
+    else
+        placemarker.Size = Vector3.new(0, 0, 0)
+    end
+    placemarker.Transparency = 1
+    if Dotlock.DOT then
+        Vnly_makemarker(placemarker, placemarker, Color3.fromRGB(68, 214, 44), 0.6, 0)
+    end
+end)
+
+-- Handle key toggling and disconnecting event
+game.Players.LocalPlayer:GetMouse().KeyDown:Connect(function(k)
+    if k == Dotlock.Key and Dotlock.Enabled then
+        if enabled == true then
+            enabled = false
+            if connection then connection:Disconnect() end -- Disconnect the event on untoggle
+            Plr = nil -- Clear player on untoggle
+            if Dotlock.NOTIF == true then
+                game.StarterGui:SetCore("SendNotification", {
+                    Title = "Vnly Ware",
+                    Text = "Unlocked Dot Lock",
+                    Icon = "http://www.roblox.com/asset/?id=8850953349",
+                    Duration = 1,
+                })
+            end
+        else
+            Plr = Vnly_getClosestPlayerToCursor()
+            enabled = true
+
+            -- Ensure Plr and Character are valid before proceeding
+            connection = game:GetService("RunService").Stepped:Connect(function()
+                if enabled and Plr and Plr.Character and Plr.Character:FindFirstChild(Dotlock.DotHitpart) then
+                    local prediction = Vector3.new(
+                        Plr.Character.HumanoidRootPart.Velocity.X * Dotlock.Prediction.AccomodationFactorX,
+                        Plr.Character.HumanoidRootPart.Velocity.Y * Dotlock.Prediction.AccomodationFactorY,
+                        Plr.Character.HumanoidRootPart.Velocity.Z * Dotlock.Prediction.AccomodationFactorZ
+                    )
+                    placemarker.CFrame = CFrame.new(Plr.Character[Dotlock.DotHitpart].Position + prediction)
+                else
+                    placemarker.CFrame = CFrame.new(0, 9999, 0)
+                end
+            end)
+            if Dotlock.NOTIF == true then
+                game.StarterGui:SetCore("SendNotification", {
+                    Title = "Vnly Ware",
+                    Text = "Locked on: " .. tostring(Plr.Name),
+                    Icon = "http://www.roblox.com/asset/?id=8850953349",
+                    Duration = 1,
+                })
+            end
+        end
+    end
+end)
+
+-- Function to find the closest player
+function Vnly_getClosestPlayerToCursor()
+    local closestPlayer
+    local shortestDistance = 9999
+
+    for i, v in pairs(game.Players:GetPlayers()) do
+        -- Ensure player is valid and their character exists before accessing properties
+        if v ~= game.Players.LocalPlayer and v.Character and v.Character:FindFirstChild("Humanoid") and v.Character.Humanoid.Health > 0 and v.Character:FindFirstChild("HumanoidRootPart") then
+            local pos = CC:WorldToViewportPoint(v.Character.PrimaryPart.Position)
+            local magnitude = (Vector2.new(pos.X, pos.Y) - Vector2.new(mouse.X, mouse.Y)).magnitude
+            if magnitude < shortestDistance then
+                closestPlayer = v
+                shortestDistance = magnitude
+            end
+        end
+    end
+    return closestPlayer
+end
+
+-- Ensure placemarker positioning based on target
+game:GetService("RunService").Stepped:connect(function()
+    if enabled and Plr and Plr.Character and Plr.Character:FindFirstChild(Dotlock.DotHitpart) then
+        local prediction = Vector3.new(
+            Plr.Character.HumanoidRootPart.Velocity.X * Dotlock.Prediction.AccomodationFactorX,
+            Plr.Character.HumanoidRootPart.Velocity.Y * Dotlock.Prediction.AccomodationFactorY,
+            Plr.Character.HumanoidRootPart.Velocity.Z * Dotlock.Prediction.AccomodationFactorZ
+        )
+        placemarker.CFrame = CFrame.new(Plr.Character[Dotlock.DotHitpart].Position + prediction)
+    else
+        placemarker.CFrame = CFrame.new(0, 9999, 0)
+    end
+end)
+
+local mt = getrawmetatable(game)
+local old = mt.__namecall
+setreadonly(mt, false)
+mt.__namecall = newcclosure(function(...)
+    local args = {...}
+    if enabled and getnamecallmethod() == "FireServer" and args[2] == "UpdateMousePosI2" then
+        args[3] = Plr.Character.HumanoidRootPart.Position + (Plr.Character.HumanoidRootPart.Velocity * Dotlock.Prediction.AccomodationFactorX)
+        return old(unpack(args))
+    end
+    return old(...)
+end)
+
+if Dotlock.AIRSHOT then
+    Plr.Character:WaitForChild("Humanoid").StateChanged:Connect(function(old, new)
+        if new == Enum.HumanoidStateType.Freefall then
+            Dotlock.DotHitpart = Dotlock.DotAirHitpart
+        else
+            Dotlock.DotHitpart = "LowerTorso"
+        end
+    end)
+end
