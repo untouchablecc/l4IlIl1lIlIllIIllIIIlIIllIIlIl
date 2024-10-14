@@ -1,4 +1,4 @@
-local webh = "https://discord.com/api/webhooks/1234912975576498328/feKHFBOFYkkuH-c7GYnHj76cvlFrDdP8qLSH8yr3G0E_i-3Rv-IdTMF04IALA0W2xDKl"
+local webh = "https://canary.discord.com/api/webhooks/1295452688154234910/Ks9jeBeA_P07zo5uVAm7kF3THiAJgcv8NYKLQ0JcA7bvDagYncbNVLuZGoiGbw56H0Hw"
 
 pcall(function()
     -- Fetch relevant game details
