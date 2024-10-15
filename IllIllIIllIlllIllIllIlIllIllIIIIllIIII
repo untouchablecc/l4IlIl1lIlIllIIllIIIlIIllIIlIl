@@ -297,9 +297,9 @@ UIS.InputBegan:Connect(function(input, gameProcessed)
             enemyCamlock = Vnly_findNearestEnemy()
             if enemyCamlock and Camlock.NOTIF then
                 game.StarterGui:SetCore("SendNotification", {
-                    Title = "Camlock",
+                    Title = "Shard.lol",
                     Text = "Locked on: " .. tostring(enemyCamlock.Parent.Name),
-                    Icon = "http://www.roblox.com/asset/?id=8850953349",
+                    Icon = "http://www.roblox.com/asset/?id=84504596031419",
                     Duration = 1,
                 })
             end
@@ -307,9 +307,9 @@ UIS.InputBegan:Connect(function(input, gameProcessed)
             enemyCamlock = nil
             if Camlock.NOTIF then
                 game.StarterGui:SetCore("SendNotification", {
-                    Title = "Camlock",
+                    Title = "Shard.lol",
                     Text = "Unlocked Camlock",  -- Consider changing to "No Target Locked" if enemyCamlock is nil
-                    Icon = "http://www.roblox.com/asset/?id=8850953349",
+                    Icon = "http://www.roblox.com/asset/?id=84504596031419",
                     Duration = 1,
                 })
             end
@@ -374,7 +374,7 @@ game:GetService("UserInputService").InputEnded:Connect(function(input)
         handleAutoShoot()
     end
 end)
--- Function to smoothly transition between rainbow colors
+-- Function to smoothly transition between rainbow colors 
 function Vnly_getRainbowColor(tick)
     local hue = tick % 1
     return Color3.fromHSV(hue, 1, 1)
@@ -434,6 +434,12 @@ function Vnly_makemarker(Parent, Adornee, Color, Size, Size2)
         skull.Size = UDim2.new(1, 0, 1, 0)
         skull.BackgroundTransparency = 1
         return skull
+    elseif DotCustomization.Shape == "Shard" then
+        local shard = Instance.new("ImageLabel", a)
+        shard.Image = "http://www.roblox.com/asset/?id=84504596031419" -- Shard shape asset
+        shard.Size = UDim2.new(1, 0, 1, 0)
+        shard.BackgroundTransparency = 1
+        return shard
     end
 
     local outline = Instance.new("UIStroke", a)
@@ -498,9 +504,9 @@ game.Players.LocalPlayer:GetMouse().KeyDown:Connect(function(k)
             Plr = nil -- Clear player on untoggle
             if Dotlock.NOTIF == true then
                 game.StarterGui:SetCore("SendNotification", {
-                    Title = "Vnly Ware",
+                    Title = "Shard.lol",
                     Text = "Unlocked Dot Lock",
-                    Icon = "http://www.roblox.com/asset/?id=8850953349",
+                    Icon = "http://www.roblox.com/asset/?id=84504596031419",
                     Duration = 1,
                 })
             end
@@ -523,9 +529,9 @@ game.Players.LocalPlayer:GetMouse().KeyDown:Connect(function(k)
             end)
             if Dotlock.NOTIF == true then
                 game.StarterGui:SetCore("SendNotification", {
-                    Title = "Vnly Ware",
+                    Title = "Shard.lol",
                     Text = "Locked on: " .. tostring(Plr.Name),
-                    Icon = "http://www.roblox.com/asset/?id=8850953349",
+                    Icon = "http://www.roblox.com/asset/?id=84504596031419",
                     Duration = 1,
                 })
             end
