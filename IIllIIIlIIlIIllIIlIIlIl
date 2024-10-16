@@ -1,0 +1,73 @@
+local OldTick      = 0
+local Sleeping     = false  
+local RunService   = game:GetService("RunService")
+local InputService = game:GetService("UserInputService")
+local LocalPlayer  = game.Players.LocalPlayer
+local Indicator    = Drawing.new("Text")
+local SetProperty  = sethiddenproperty
+
+
+Indicator.Visible  = true
+Indicator.Position = Vector2.new(50, 100)
+Indicator.Text     = "Enabled: false"
+Indicator.Color    = Color3.new(1, 1, 1)
+Indicator.Outline  = true
+
+
+function Desync()
+    task.spawn(function()
+        while Config['Enabled'] do
+            if LocalPlayer.Character then 
+                local HumanoidRootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if HumanoidRootPart then
+                    local loop = RunService.Heartbeat:Connect(function()
+                        
+                        SetProperty(HumanoidRootPart, "NetworkIsSleeping", true)
+                        task.wait(Config['Delay'] / 1000) 
+                        
+                        
+                        SetProperty(HumanoidRootPart, "NetworkIsSleeping", false)
+                        task.wait((Config['Delay'] / 1000) * 1.5) 
+                        
+                        
+                        SetProperty(HumanoidRootPart, "NetworkIsSleeping", true)
+                        task.wait((Config['Delay'] / 1000) * 2) 
+                        
+                        
+                        if Config['Enabled'] == false then
+                            loop:Disconnect()
+                        end
+                    end) 
+                   
+                    task.wait()
+                    if loop then
+                        loop:Disconnect()
+                    end
+                end
+            end
+            task.wait()
+        end
+    end)
+end
+
+
+InputService.InputBegan:Connect(function(Key, ProcessedEvent)
+    if ProcessedEvent then return end 
+    if Key.KeyCode == Enum.KeyCode[Config['Keybind']] then 
+        Config['Enabled'] = not Config['Enabled']
+        if Config['Enabled'] then
+            Desync()
+        end 
+        Indicator.Text = "Enabled: " .. tostring(Config['Enabled'])
+    end
+
+    
+    if Key.KeyCode == Enum.KeyCode.Equals then 
+        Config['Delay'] = Config['Delay'] + Config['Interval']
+    end 
+
+    
+    if Key.KeyCode == Enum.KeyCode.Minus then 
+        Config['Delay'] = math.max(Config['Delay'] - Config['Interval'], 0)
+    end 
+end)
