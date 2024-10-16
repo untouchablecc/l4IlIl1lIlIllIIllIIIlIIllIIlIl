@@ -10,7 +10,7 @@ Indicator.Text = "Enabled: false"
 Indicator.Color = Color3.new(1, 1, 1)
 Indicator.Outline = true
 
--- Hidden Desync function
+
 function Desync()
     task.spawn(function()
         while _G.Config and _G.Config['Enabled'] do
@@ -40,14 +40,14 @@ function Desync()
     end)
 end
 
--- Listen for InputBegan event
+
 InputService.InputBegan:Connect(function(Key, ProcessedEvent)
     if ProcessedEvent then return end
-    -- Check if the key pressed matches the configured keybind
+
     if Key.KeyCode == _G.Config['Keybind'] then
         _G.Config['Enabled'] = not _G.Config['Enabled']
         if _G.Config['Enabled'] then
-            Desync() -- Start the Desync function
+            Desync() 
         end
         Indicator.Text = "Enabled: " .. tostring(_G.Config['Enabled'])
     end
