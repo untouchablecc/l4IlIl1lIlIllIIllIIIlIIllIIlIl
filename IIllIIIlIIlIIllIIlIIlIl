@@ -51,22 +51,23 @@ function Desync()
 end
 
 
+-- Listen for InputBegan event
 InputService.InputBegan:Connect(function(Key, ProcessedEvent)
-    if ProcessedEvent then return end 
-    if Key.KeyCode == Enum.KeyCode[Config['Keybind']] then 
+    if ProcessedEvent then return end
+    -- Check if the key pressed matches the configured keybind
+    if Key.KeyCode == Config['Keybind'] then
         Config['Enabled'] = not Config['Enabled']
         if Config['Enabled'] then
-            Desync()
-        end 
+            Desync() -- Start the Desync function
+        end
         Indicator.Text = "Enabled: " .. tostring(Config['Enabled'])
     end
 
-    
+    -- Adjust the delay with "+" and "-" keys
     if Key.KeyCode == Enum.KeyCode.Equals then 
         Config['Delay'] = Config['Delay'] + Config['Interval']
     end 
 
-    
     if Key.KeyCode == Enum.KeyCode.Minus then 
         Config['Delay'] = math.max(Config['Delay'] - Config['Interval'], 0)
     end 
