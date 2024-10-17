@@ -1,10 +1,11 @@
-local OldTick      = 0
-local RunService   = game:GetService("RunService")
+-- This part goes inside the loadstring
+local OldTick = 0
+local RunService = game:GetService("RunService")
 local InputService = game:GetService("UserInputService")
-local LocalPlayer  = game.Players.LocalPlayer
-local Humanoid     = LocalPlayer.Character:WaitForChild("Humanoid")
-local Indicator    = Drawing.new("Text") -- Initialize indicator
-local SetProperty  = sethiddenproperty
+local LocalPlayer = game.Players.LocalPlayer
+local Humanoid = LocalPlayer.Character:WaitForChild("Humanoid")
+local Indicator = Drawing.new("Text") -- Initialize indicator
+local SetProperty = sethiddenproperty
 local locals = {
     network_should_sleep = false,
     old_ticks = {
