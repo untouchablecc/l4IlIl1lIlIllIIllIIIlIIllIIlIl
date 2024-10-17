@@ -1,0 +1,97 @@
+local OldTick = 0
+local RunService = game:GetService("RunService")
+local InputService = game:GetService("UserInputService")
+local LocalPlayer = game.Players.LocalPlayer
+local Humanoid = LocalPlayer.Character:WaitForChild("Humanoid")
+local Indicator = Drawing.new("Text") -- Initialize indicator
+local SetProperty = sethiddenproperty
+local locals = {
+    network_should_sleep = false,
+    old_ticks = {
+        network_desync_tick = 0
+    }
+}
+
+-- Detect if Shift or Control is held to turn off NoSlow
+local function DetectShiftOrControl()
+    return InputService:IsKeyDown(Enum.KeyCode.LeftShift) or InputService:IsKeyDown(Enum.KeyCode.RightShift)
+        or InputService:IsKeyDown(Enum.KeyCode.LeftControl) or InputService:IsKeyDown(Enum.KeyCode.RightControl)
+end
+
+-- Infinite jump functionality
+local function InfiniteJump()
+    if _G.Misc['InfiniteJump'] then
+        InputService.JumpRequest:Connect(function()
+            Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+        end)
+    end
+end
+
+-- No slow effect during reload or aiming
+local function NoSlowEffect()
+    if _G.Misc['NoSlow'] then
+        RunService.Heartbeat:Connect(function()
+            if Humanoid.MoveDirection.Magnitude > 0 and not DetectShiftOrControl() then
+                -- Allow regular movement without slowing down
+                Humanoid.WalkSpeed = 16 -- Keep regular walk speed
+            elseif DetectShiftOrControl() then
+                Humanoid.WalkSpeed = 16 -- Reset to default when Shift or Control is pressed
+            end
+        end)
+    end
+end
+
+-- Visual indicator update for desync
+local function UpdateIndicator(enabled)
+    if _G.Config['IndicatorEnabled'] then
+        Indicator.Visible = true
+        Indicator.Position = Vector2.new(50, 100) -- Position on the screen
+        Indicator.Size = 20 -- Text size
+        Indicator.Center = false
+        Indicator.Outline = true
+        Indicator.Color = enabled and Color3.fromRGB(0, 255, 0) or Color3.fromRGB(255, 0, 0) -- Green when enabled, red when disabled
+        Indicator.Text = enabled and "Desync: Enabled" or "Desync: Disabled"
+    end
+end
+
+-- Desync function
+local function Desync()
+    task.wait(_G.Config['StabilizationTime'])
+    
+    local loop = RunService.Heartbeat:Connect(function()
+        if _G.Config['Enabled'] and ((tick() - locals.old_ticks.network_desync_tick) >= (_G.Config['Delay'] / 1000)) then
+            locals.network_should_sleep = not locals.network_should_sleep
+            SetProperty(LocalPlayer.Character.HumanoidRootPart, "NetworkIsSleeping", locals.network_should_sleep)
+            locals.old_ticks.network_desync_tick = tick()
+            if not locals.network_should_sleep then
+                SetProperty(LocalPlayer.Character.HumanoidRootPart, "NetworkIsSleeping", false)
+            end
+        end
+    end)
+
+    task.spawn(function()
+        while _G.Config['Enabled'] do
+            task.wait()
+        end
+        loop:Disconnect()
+    end)
+end
+
+-- Input listener for enabling/desync and activating misc features
+InputService.InputBegan:Connect(function(Key, ProcessedEvent)
+    if ProcessedEvent then return end 
+    if Key.KeyCode == Enum.KeyCode[_G.Config['Keybind']] then 
+        _G.Config['Enabled'] = not _G.Config['Enabled']
+        if _G.Config['Enabled'] then
+            Desync()
+        end 
+        UpdateIndicator(_G.Config['Enabled'])
+    end
+end)
+
+-- Initialize movement settings
+InfiniteJump()
+NoSlowEffect()
+
+-- Show indicator initially
+UpdateIndicator(_G.Config['Enabled'])
