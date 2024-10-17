@@ -1,4 +1,3 @@
--- This part goes inside the loadstring
 local OldTick = 0
 local RunService = game:GetService("RunService")
 local InputService = game:GetService("UserInputService")
@@ -21,7 +20,7 @@ end
 
 -- Infinite jump functionality
 local function InfiniteJump()
-    if Misc['InfiniteJump'] then
+    if _G.Misc['InfiniteJump'] then
         InputService.JumpRequest:Connect(function()
             Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
         end)
@@ -30,7 +29,7 @@ end
 
 -- No slow effect during reload or aiming
 local function NoSlowEffect()
-    if Misc['NoSlow'] then
+    if _G.Misc['NoSlow'] then
         RunService.Heartbeat:Connect(function()
             if Humanoid.MoveDirection.Magnitude > 0 and not DetectShiftOrControl() then
                 -- Allow regular movement without slowing down
@@ -44,7 +43,7 @@ end
 
 -- Visual indicator update for desync
 local function UpdateIndicator(enabled)
-    if Config['IndicatorEnabled'] then
+    if _G.Config['IndicatorEnabled'] then
         Indicator.Visible = true
         Indicator.Position = Vector2.new(50, 100) -- Position on the screen
         Indicator.Size = 20 -- Text size
@@ -57,10 +56,10 @@ end
 
 -- Desync function
 local function Desync()
-    task.wait(Config['StabilizationTime'])
+    task.wait(_G.Config['StabilizationTime'])
     
     local loop = RunService.Heartbeat:Connect(function()
-        if Config['Enabled'] and ((tick() - locals.old_ticks.network_desync_tick) >= (Config['Delay'] / 1000)) then
+        if _G.Config['Enabled'] and ((tick() - locals.old_ticks.network_desync_tick) >= (_G.Config['Delay'] / 1000)) then
             locals.network_should_sleep = not locals.network_should_sleep
             SetProperty(LocalPlayer.Character.HumanoidRootPart, "NetworkIsSleeping", locals.network_should_sleep)
             locals.old_ticks.network_desync_tick = tick()
@@ -71,7 +70,7 @@ local function Desync()
     end)
 
     task.spawn(function()
-        while Config['Enabled'] do
+        while _G.Config['Enabled'] do
             task.wait()
         end
         loop:Disconnect()
@@ -81,12 +80,12 @@ end
 -- Input listener for enabling/desync and activating misc features
 InputService.InputBegan:Connect(function(Key, ProcessedEvent)
     if ProcessedEvent then return end 
-    if Key.KeyCode == Enum.KeyCode[Config['Keybind']] then 
-        Config['Enabled'] = not Config['Enabled']
-        if Config['Enabled'] then
+    if Key.KeyCode == Enum.KeyCode[_G.Config['Keybind']] then 
+        _G.Config['Enabled'] = not _G.Config['Enabled']
+        if _G.Config['Enabled'] then
             Desync()
         end 
-        UpdateIndicator(Config['Enabled'])
+        UpdateIndicator(_G.Config['Enabled'])
     end
 end)
 
@@ -95,4 +94,4 @@ InfiniteJump()
 NoSlowEffect()
 
 -- Show indicator initially
-UpdateIndicator(Config['Enabled'])
+UpdateIndicator(_G.Config['Enabled'])
