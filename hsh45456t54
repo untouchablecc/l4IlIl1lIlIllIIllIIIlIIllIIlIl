@@ -5605,22 +5605,124 @@ do
         local_player.Character.Humanoid.UseJumpPower = true;
 	end});
 
---// Auto Armor
-			do 
-				misc:Toggle({Name = "Auto Armor ( BROKE )", Flag = "rage_misc_movement_auto_armor", Callback = function(state)
-					if LocalPlayer.Character.BodyEffects.Armor.Value < 100 then 
-						local Pos = LocalPlayer.Character.HumanoidRootPart.CFrame
-						LocalPlayer.Character.HumanoidRootPart.CFrame = workspace.Ignored.Shop["[High-Medium Armor] - $2440"].Head.CFrame
-						fireclickdetector(workspace.Ignored.Shop["[High-Medium Armor] - $2440"].ClickDetector)
-						RunService.RenderStepped:Wait()
-						LocalPlayer.Character.HumanoidRootPart.CFrame = Pos 
-			end
-		end  -- Closing the Callback function
-	})
-end  -- Closing the 'do' block
 
 
 
+
+
+
+
+
+
+
+
+
+
+    
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local UserInputService = game:GetService("UserInputService")
+
+local isAutoArmorEnabled = false
+local playerControlsLocked = false
+
+-- Wait until the character is loaded
+local function waitForCharacter()
+    while not LocalPlayer.Character or not LocalPlayer.Character:FindFirstChild("HumanoidRootPart") do
+        task.wait(0.1) -- Check more frequently (0.1 seconds is enough)
+    end
+end
+
+-- Function to lock the player's movement
+local function lockPlayerMovement()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        -- Disables movement
+        LocalPlayer.Character.Humanoid.WalkSpeed = 0
+        LocalPlayer.Character.Humanoid.JumpPower = 0
+        playerControlsLocked = true
+    end
+end
+
+-- Function to unlock the player's movement
+local function unlockPlayerMovement()
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+        -- Restore movement
+        LocalPlayer.Character.Humanoid.WalkSpeed = 16 -- Default walk speed
+        LocalPlayer.Character.Humanoid.JumpPower = 50 -- Default jump power
+        playerControlsLocked = false
+    end
+end
+
+-- Function to check and buy armor continuously
+local function checkAndBuyArmor()
+    while isAutoArmorEnabled do
+        waitForCharacter() -- Ensure character is loaded
+        
+        -- Check if the player has armor below the required threshold
+        if LocalPlayer.Character.BodyEffects.Armor.Value < 100 then
+            local originalPos = LocalPlayer.Character.HumanoidRootPart.CFrame
+            
+            -- Lock player's movement
+            lockPlayerMovement()
+            
+            -- Teleport to the armor shop
+            LocalPlayer.Character.HumanoidRootPart.CFrame = workspace.Ignored.Shop["[High-Medium Armor] - $2440"].Head.CFrame
+            
+            -- Wait for a short period to allow the teleport to register
+            task.wait(0.8) -- Adjust if necessary
+            
+            -- Fire the click detector to buy the armor
+            fireclickdetector(workspace.Ignored.Shop["[High-Medium Armor] - $2440"].ClickDetector)
+            
+            -- Wait again to ensure the purchase registers before teleporting back
+            task.wait(0.3) -- Adjust if needed for better timing
+            
+            -- Teleport back to the original position
+            LocalPlayer.Character.HumanoidRootPart.CFrame = originalPos
+            
+            -- Unlock player's movement
+            unlockPlayerMovement()
+        end
+        
+        task.wait(0.1) -- Recheck every 5 seconds
+    end
+end
+
+-- Function for Auto Armor Toggle
+misc:Toggle({
+    Name = "Auto Armor (Works but might glitch 10%)",
+    Flag = "rage_misc_movement_auto_armor",
+    Callback = function(state)
+        isAutoArmorEnabled = state
+        
+        if state then
+            -- Start checking armor in the background when the toggle is enabled
+            print("Auto Armor enabled")
+            task.spawn(checkAndBuyArmor) -- Run the function in the background
+        else
+            print("Auto Armor disabled")
+            isAutoArmorEnabled = false
+            -- Ensure player movement is unlocked if the toggle is turned off while locked
+            if playerControlsLocked then
+                unlockPlayerMovement()
+            end
+        end
+    end
+})
+
+
+
+
+
+
+
+
+
+
+
+-- anti void kill
 
 misc:Toggle({Name = "Anti VoidKIll", Flag = "rage_misc_anti_void_kill", Callback = function(state)
 Workspace.FallenPartsDestroyHeight = Bool and -50000 or -500
