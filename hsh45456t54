@@ -2790,7 +2790,16 @@ local hitsounds = {
     ["Bameware"] = "rbxassetid://6565367558",
     ["Neverlose"] = "rbxassetid://6565370984",
     ["Gamesense"] = "rbxassetid://4817809188",
-    ["Rust"] = "rbxassetid://6565371338"
+    ["Rust"] = "rbxassetid://6565371338",
+    ["Mario"] = "rbxassetid://5709456554",
+    ["Steve"] = "rbxassetid://5869422451",
+    ["1nn"] = "rbxassetid://7349055654",
+    ["OSU"] = "rbxassetid://7147454322",
+    ["Bow"] = "rbxassetid://3442683707",
+    ["BowHit"] = "rbxassetid://1053296915",
+    ["Windows XP Error"] = "rbxassetid://160715357",
+    ["Bonk"] = "rbxassetid://3765689841",
+    ["Lazer Beam"] = "rbxassetid://130791043",
 };
 
 if (not (isfolder("allahs"))) then
