@@ -6,192 +6,155 @@
 }
 local CheatName = "vnly"
 
--- check if there is no global variable SYC, and if there is none, it will set it to the table above.
--- erm its basically prefetch ifykyk
-if not getgenv().SYC then
-    getgenv().SYC = SYC
-end
+-- Prefetch check for SYC global variable
+local GlobalSYC = rawget(_G, "SYC") or SYC
 
-if not getgenv().load_game then
-    getgenv().load_game = "da_hood"
-end
+-- Local variables for game services
+local playerService = game:GetService("Players")
+local coreguiService = game:GetService("CoreGui")
+local tweenService = game:GetService("TweenService")
+local inputService = game:GetService("UserInputService")
+local rsService = game:GetService("RunService")
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local textService = game:GetService("TextService")
+local httpService = game:GetService("HttpService")
+local userSettings = UserSettings()
+local userGameSettings = userSettings:GetService("UserGameSettings")
+local inputManager = game:GetService("VirtualInputManager")
 
-if not isfolder(CheatName) then
-    makefolder(CheatName)
-end
-
-if not isfolder(CheatName .. "/configs") then
-    makefolder(CheatName .. "/configs")
-end
-
-if not isfolder(CheatName.. "/configs/da_hood") then
-    makefolder(CheatName .. "/configs/da_hood")
-end
-
--- make services global. self-explanatory.
-getgenv().playerService = game:GetService("Players")
-getgenv().coreguiService = game:GetService("CoreGui")
-getgenv().tweenService = game:GetService("TweenService")
-getgenv().inputService = game:GetService("UserInputService")
-getgenv().rsService = game:GetService("RunService")
-getgenv().replicatedStorage = game:GetService("ReplicatedStorage")
-getgenv().textService = game:GetService("TextService")
-getgenv().httpService = game:GetService("HttpService")
-getgenv().userSettings = UserSettings()
-getgenv().userGameSettings = userSettings:GetService("UserGameSettings")
-getgenv().inputManager = game:GetService("VirtualInputManager")
-
+-- Local references for player and mouse
 local LocalPlayer = playerService.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
--- localization of lua libraries. this reduces the need to repeatedly look up these global libraries.
--- what the actual fuck weda.
-local MathHuge, MathAbs, MathAcos, MathAsin, MathAtan, MathAtan2, MathCeil, MathCos, MathCosh, MathDeg, MathExp, MathFloor, MathFmod, MathFrexp, MathLdexp, MathLog, MathLog10, MathMax, MathMin, MathModf, MathPi, MathPow, MathRad, MathRandom, MathRandomseed, MathSin, MathSinh, MathSqrt, MathTan, MathTanh = math.huge, math.abs, math.acos, math.asin, math.atan, math.atan2, math.ceil, math.cos, math.cosh, math.deg, math.exp, math.floor, math.fmod, math.frexp, math.ldexp, math.log, math.log10, math.max, math.min, math.modf, math.pi, math.pow, math.rad, math.random, math.randomseed, math.sin, math.sinh, math.sqrt, math.tan, math.tanh
-local TableConcat, TableInsert, TablePack, TableRemove, TableSort, TableUnpack, TableClear, TableFind = table.concat, table.insert, table.pack, table.remove, table.sort, table.unpack, table.clear, table.find
-local Vector2New, Vector2Zero, Vector2New = Vector2.new, Vector2.zero, Vector2.new
-local Vector3New, Vector3Zero, Vector3One, Vector3FromNormalId, Vector3FromAxis = Vector3.new, Vector3.zero, Vector3.one, Vector3.FromNormalId, Vector3.FromAxis
-local UDim2New = UDim2.new
-local CFrameNew, CFrameAngles, CFrameFromAxisAngle, CFrameFromEulerAnglesXYZ, CFrameFromMatrix, CFrameFromOrientation, CFrameFromQuaternion = CFrame.new, CFrame.Angles, CFrame.fromAxisAngle, CFrame.fromEulerAnglesXYZ, CFrame.fromMatrix, CFrame.fromOrientation, CFrame.fromQuaternion
-local Color3New, Color3FromRGB, Color3FromHSV = Color3.new, Color3.fromRGB, Color3.fromHSV
-local InstanceNew = Instance.new
-local TaskDelay, TaskSpawn, TaskWait = task.delay, task.spawn, task.wait
-local RaycastParamsNew = RaycastParams.new
-local DrawingNew = Drawing.new
+-- Localization of Lua libraries (safe optimization)
+local MathHuge, MathAbs, MathAtan2 = math.huge, math.abs, math.atan2
+local TableInsert, TableRemove = table.insert, table.remove
+local Vector2New, Vector3New, Color3FromRGB = Vector2.new, Vector3.new, Color3.fromRGB
+local InstanceNew, TaskWait = Instance.new, task.wait
 
--- importing of files, this is bundled with a bundler.
-local ModuleHandler = (function() -- src/Lua/Modules/ModuleHandler.lua
-    -- similar to lua require, but it is for a certain table. Such as SYC.Modules
-    
-    local ModuleHandler = {}
-    
-    function ModuleHandler:include(ModuleName)
-        if not SYC then return end
-        if not SYC.Modules then return end
-    
-        if not type(ModuleName) == "string" then return end
-    
-        local Modules = SYC.Modules
-        return Modules[ModuleName]
-    end
-    
-    getgenv().include = function (modname) return ModuleHandler:include(modname) end 
-    return ModuleHandler
-end)()
+-- ModuleHandler without global reference
+local ModuleHandler = {}
+function ModuleHandler:include(ModuleName)
+    if not GlobalSYC.Modules then return end
+    if type(ModuleName) ~= "string" then return end
+    return GlobalSYC.Modules[ModuleName]
+end
 
-do -- src/Lua/Modules/Base/
-    do -- src/Lua/Modules/Base/Connection.lua
-        function SYC.Modules.Connect(onething, secondthing)
-            local connection = onething:Connect(secondthing)
-            return connection
-        end
-    end
-    do -- src/Lua/Modules/Base/Draw.lua
-        local DrawingClass = {}
-        DrawingClass.__index = DrawingClass
-        DrawingClass.Objects = {}
-        
-        local DrawingMeta = {}
-        
-        DrawingMeta.__call = function (self, Arguments)
-            if Arguments then
-                local newObject = Drawing.new(Arguments[1])
-                
-                for property, value in next, Arguments[2] do
-                    newObject[property] = value
-                end
-        
-                table.insert(self.Objects, newObject)
-                return newObject
-            end
-        end
-        
-        setmetatable(DrawingClass, DrawingMeta)
-        
-        SYC.Modules.DrawingClass = DrawingClass
-    end
-    do -- src/Lua/Modules/Base/Lerp.lua
-        function SYC.Modules.lerp(a, b, t)
-            return a + (b - a) * t
-        end
-    end
-    do -- src/Lua/Modules/Base/Loops.lua
-        local Loops = {Heartbeat = {}, RenderStepped = {}}
-        function Loops:AddToHeartbeat(Name, Function)
-            if Loops["Heartbeat"][Name] == nil then
-                Loops["Heartbeat"][Name] = rsService.Heartbeat:Connect(Function)
-            end
-        end
-        function Loops:RemoveFromHeartbeat(Name)
-            if Loops["Heartbeat"][Name] then
-                Loops["Heartbeat"][Name]:Disconnect()
-                Loops["Heartbeat"][Name] = nil
-            end
-        end
-        function Loops:AddToRenderStepped(Name, Function)
-            if Loops["RenderStepped"][Name] == nil then
-                Loops["RenderStepped"][Name] = rsService.RenderStepped:Connect(Function)
-            end
-        end
-        function Loops:RemoveFromRenderStepped(Name)
-            if Loops["RenderStepped"][Name] then
-                Loops["RenderStepped"][Name]:Disconnect()
-                Loops["RenderStepped"][Name] = nil
-            end
-        end
-        
-        SYC.Modules.Loops = Loops
-    end
-    do -- src/Lua/Modules/Base/PerlinNoise.lua
-        -- useful shit for legit ig
-        function SYC.Modules.PerlinNoise(offset, speed, time)
-            local value = math.noise(time * speed + offset)
-            return math.clamp(value, -0.5, 0.5)
-        end
-    end
-    do -- src/Lua/Modules/Base/UI - Rich to Plain.lua
-        -- @https://devforum.roblox.com/t/how-to-ensure-a-plain-text-string-when-using-rich-text-field/1640202
-        function SYC.Modules.UI.RichTextToNormalText(str)
-            local output_string = str
-            while true do 
-                if not output_string:find("<") and not output_string:find(">") then break end -- If not found  any <...>
-                if (output_string:find("<") and not output_string:find(">")) or (output_string:find(">") and not output_string:find("<")) then return error("Invalid RichText") end -- if found only "<..." or "...>"
-                output_string = output_string:gsub(output_string:sub(output_string:find("<"),output_string:find(">")),"",1) -- Removing this "<...>"
-                TaskWait()
-            end
-            return output_string
-        end
-    end
-    do -- src/Lua/Modules/Base/UI -GetTextBoundary.lua
-        function SYC.Modules.UI:GetTextBoundary(Text, Font, Size, Resolution)
-            local Bounds = textService:GetTextSize(Text, Size, Font, Resolution or Vector2New(1920, 1080))
-            return Bounds.X, Bounds.Y
-        end
+-- Base modules
+do
+    function SYC.Modules.Connect(onething, secondthing)
+        return onething:Connect(secondthing)
     end
 end
 
+-- Drawing Class
+do
+    local DrawingClass = {}
+    DrawingClass.__index = DrawingClass
+    DrawingClass.Objects = {}
 
-        local UserInterface = (function() -- src/Lua/Interface/Interface.Lua
-    local UserInterface = {
-        Instances = {},
-        Popup = nil,
-        KeybindsListObjects = {},
-        KeybindList = nil,
-    
-        Flags = {},
-        ConfigFlags = {}
-    }
-    getgenv().uishit = UserInterface
-    
-    getgenv().theme = {
-        accent = Color3FromRGB(168, 157, 159)
-    }
-    
-    getgenv().theme_event = Instance.new('BindableEvent')
-    
-    getgenv().UI = UserInterface.Instances
-    local UIModule = include "UI"
-    
-    local dragging, dragInput, dragStart, startPos, dragObject
+    setmetatable(DrawingClass, {
+        __call = function(_, args)
+            if args then
+                local newObject = Drawing.new(args[1])
+                for property, value in pairs(args[2]) do
+                    newObject[property] = value
+                end
+                TableInsert(DrawingClass.Objects, newObject)
+                return newObject
+            end
+        end
+    })
+
+    SYC.Modules.DrawingClass = DrawingClass
+end
+
+-- Lerp function
+do
+    function SYC.Modules.lerp(a, b, t)
+        return a + (b - a) * t
+    end
+end
+
+-- Loops (Heartbeat/RenderStepped connections)
+do
+    local Loops = {Heartbeat = {}, RenderStepped = {}}
+
+    function Loops:AddToHeartbeat(Name, Function)
+        if not Loops.Heartbeat[Name] then
+            Loops.Heartbeat[Name] = rsService.Heartbeat:Connect(Function)
+        end
+    end
+
+    function Loops:RemoveFromHeartbeat(Name)
+        if Loops.Heartbeat[Name] then
+            Loops.Heartbeat[Name]:Disconnect()
+            Loops.Heartbeat[Name] = nil
+        end
+    end
+
+    function Loops:AddToRenderStepped(Name, Function)
+        if not Loops.RenderStepped[Name] then
+            Loops.RenderStepped[Name] = rsService.RenderStepped:Connect(Function)
+        end
+    end
+
+    function Loops:RemoveFromRenderStepped(Name)
+        if Loops.RenderStepped[Name] then
+            Loops.RenderStepped[Name]:Disconnect()
+            Loops.RenderStepped[Name] = nil
+        end
+    end
+
+    SYC.Modules.Loops = Loops
+end
+
+-- Perlin Noise Module
+do
+    function SYC.Modules.PerlinNoise(offset, speed, time)
+        local value = math.noise(time * speed + offset)
+        return math.clamp(value, -0.5, 0.5)
+    end
+end
+
+-- RichText to Plain Text (UI utility)
+do
+    function SYC.Modules.UI.RichTextToNormalText(str)
+        local output_string = str
+        while true do
+            if not output_string:find("<") and not output_string:find(">") then break end
+            output_string = output_string:gsub(output_string:sub(output_string:find("<"), output_string:find(">")), "", 1)
+            TaskWait()
+        end
+        return output_string
+    end
+end
+
+-- UI Text Boundary (for calculating label sizes)
+do
+    function SYC.Modules.UI:GetTextBoundary(Text, Font, Size, Resolution)
+        local Bounds = textService:GetTextSize(Text, Size, Font, Resolution or Vector2New(1920, 1080))
+        return Bounds.X, Bounds.Y
+    end
+end
+
+-- User Interface Module Initialization
+local UserInterface = {
+    Instances = {},
+    Popup = nil,
+    KeybindsListObjects = {},
+    KeybindList = nil,
+    Flags = {},
+    ConfigFlags = {}
+}
+
+-- Theme settings (local-only)
+local theme = {
+    accent = Color3FromRGB(168, 157, 159)
+}
+
+local theme_event = InstanceNew('BindableEvent')
+local dragging, dragInput, dragStart, startPos, dragObject
     
     local Keys = {
         [Enum.KeyCode.LeftShift] = "LS",
