@@ -3268,5 +3268,3 @@ local dragging, dragInput, dragStart, startPos, dragObject
     end
     
     return UserInterface
-end)()
-return UserInterface
