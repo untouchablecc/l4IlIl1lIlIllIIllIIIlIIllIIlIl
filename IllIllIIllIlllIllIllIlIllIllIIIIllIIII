@@ -314,9 +314,10 @@ RunService.RenderStepped:Connect(function()
         return
     end
 
-    if not CamlockTarget or not CamlockTarget.Character or not CamlockTarget.Character:FindFirstChild("HumanoidRootPart") or not PerformChecks(CamlockTarget, CamlockTarget.Character, false) then
-        CamlockTarget = GetClosestPlayer()
-    end
+if not CamlockTarget or not CamlockTarget.Character or not CamlockTarget.Character:FindFirstChild("HumanoidRootPart") or not PerformChecks(CamlockTarget, CamlockTarget.Character, false) then
+    UnselectCamlockTarget()
+    return
+end
 
     if not CamlockTarget then
         return
