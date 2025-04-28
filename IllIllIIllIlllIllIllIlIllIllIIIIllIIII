@@ -23,7 +23,6 @@ local ExpanderActive = false
 local LastShotTime = 0
 local LastThrottleTime = 0
 
---// Prebuilt Raycast Params
 local RayParams = RaycastParams.new()
 RayParams.FilterType = Enum.RaycastFilterType.Blacklist
 RayParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
@@ -42,6 +41,7 @@ local function WallCheck(part)
 end
 
 --// Perform Checks
+
 local function PerformChecks(player, character, isSelecting)
     if not player or not character then
         return false
@@ -93,7 +93,6 @@ local function PerformChecks(player, character, isSelecting)
     return true
 end
 
---// Target System
 local function GetClosestPlayer()
     local closestPlayer = nil
     local closestDistance = math_huge
@@ -150,7 +149,25 @@ local function UnselectTarget()
     CurrentTarget = nil
 end
 
---// Firing System
+local function SelectCamlockTarget()
+    CamlockTarget = GetClosestPlayer()
+
+    if Config['Main']['Debug'] then
+        if CamlockTarget then
+            print("[Camlock] Locked onto:", CamlockTarget.Name)
+        else
+            print("[Camlock] No valid target found.")
+        end
+    end
+end
+
+local function UnselectCamlockTarget()
+    if Config['Main']['Debug'] and CamlockTarget then
+        print("[Camlock] Unlocked from:", CamlockTarget.Name)
+    end
+    CamlockTarget = nil
+end
+
 local function FireTrigger()
     local tool = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Tool")
     if tool and tool.Name == "[Knife]" then
@@ -172,7 +189,6 @@ local function FireTrigger()
     end
 end
 
---// Throttle System
 local function IsThrottled()
     local now = os_clock()
     if now - LastThrottleTime >= 0.01 then 
@@ -182,7 +198,7 @@ local function IsThrottled()
     return true
 end
 
---// Delay System
+
 local function CanShoot()
     if not Config['Triggerbot']['Delay']['Enabled'] then
         return true
@@ -201,7 +217,6 @@ local function CanShoot()
     return false
 end
 
---// Main Triggerbot Logic
        RunService.RenderStepped:Connect(function()
     if not Config['Main']['Enabled'] or not Config['Triggerbot']['Enabled'] then
         return
@@ -247,11 +262,11 @@ end
 end)
 
 --// Camlock State
+
 local CamlockHolding = false
 local CamlockEnabled = false
 local CamlockLockedTarget = nil
 
---// Camlock Apply Smooth
 local function ApplyCamlockSmoothing(targetPos)
     local mode = Config['Camlock']['Smoothness']['Mode']
     local smoothX = Config['Camlock']['Smoothness']['X']
@@ -274,35 +289,28 @@ local function ApplyCamlockSmoothing(targetPos)
     end
 end
 
---// Camlock Main Logic
 RunService.RenderStepped:Connect(function()
     if not Config['Main']['Enabled'] or not Config['Camlock']['Enabled'] then
         return
     end
 
-    local bindMode = Config['Main']['BindMode']
+    local bindMode = Config['Camlock']['BindMode']
     local active = (bindMode == "Hold" and CamlockHolding) or (bindMode == "Toggle" and CamlockEnabled)
     if not active then
         return
     end
 
-    if not CurrentTarget then
+    if not CamlockTarget then
         return
     end
 
-    if not ValidateTarget() then
-        UnselectTarget()
+    if not CamlockTarget.Character or not CamlockTarget.Character:FindFirstChild("HumanoidRootPart") then
+        UnselectCamlockTarget()
         return
     end
 
-    local character = CurrentTarget and CurrentTarget.Character
-    if not character or not character:FindFirstChild("HumanoidRootPart") then
-        UnselectTarget()
-        return
-    end
-
-    if not PerformChecks(CurrentTarget, character, false) then
-        UnselectTarget()
+    if not PerformChecks(CamlockTarget, CamlockTarget.Character, false) then
+        UnselectCamlockTarget()
         return
     end
 
@@ -314,13 +322,14 @@ RunService.RenderStepped:Connect(function()
         return
     end
 
-    local hitPart = character:FindFirstChild(Config['Camlock']['HitPart'])
+    local hitPart = CamlockTarget.Character:FindFirstChild(Config['Camlock']['HitPart'])
     if not hitPart then
         return
     end
 
     Camera.CFrame = ApplyCamlockSmoothing(hitPart.Position)
 end)
+
 
 --// Hitbox Expander
 
@@ -354,7 +363,6 @@ RunService.RenderStepped:Connect(function()
             HitboxAdornment = nil
         end
 
-        -- Restore ALL players to default
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                 local hrp = player.Character.HumanoidRootPart
@@ -393,7 +401,6 @@ RunService.RenderStepped:Connect(function()
             end
         end
     else
-        -- Free Aim Mode
         for _, player in ipairs(Players:GetPlayers()) do
             if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                 local hrp = player.Character.HumanoidRootPart
@@ -408,7 +415,8 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-    --// Spread Modifier Hook
+    --// Spread Modifier 
+
 local function GetWeaponSpreadReduction(weaponName)
     if not Config['SpreadModifier']['Enabled'] then
         return 0
@@ -424,7 +432,6 @@ OriginalRandom = hookfunction(math.random, function(...)
         return OriginalRandom(...)
     end
 
-    -- Get the calling script directly from debug info
     local info = debug.getinfo(2, "f")
     if not info or not info.func then
         return OriginalRandom(...)
@@ -435,7 +442,6 @@ OriginalRandom = hookfunction(math.random, function(...)
         return OriginalRandom(...)
     end
 
-    -- Check if caller weapon is registered
     local weaponName = caller.Parent.Name
     if Config['SpreadModifier']['Weapons'][weaponName] and select("#", ...) == 0 then
         local reduction = GetWeaponSpreadReduction(weaponName)
@@ -445,13 +451,14 @@ OriginalRandom = hookfunction(math.random, function(...)
     return OriginalRandom(...)
 end)
 
+
 --// Bind Handling
+
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode[Config['Main']['Bind']] then
         if Config['Main']['BindMode'] == "Hold" then
             Holding = true
-            CamlockHolding = true
             Config['SpreadModifier']['Enabled'] = true
             ExpanderActive = true
 
@@ -461,14 +468,30 @@ UserInputService.InputBegan:Connect(function(input, gpe)
 
         elseif Config['Main']['BindMode'] == "Toggle" then
             Holding = not Holding
-            CamlockEnabled = not CamlockEnabled
-            Config['SpreadModifier']['Enabled'] = CamlockEnabled
-            ExpanderActive = CamlockEnabled
+            Config['SpreadModifier']['Enabled'] = Holding
+            ExpanderActive = Holding
 
             if Holding and Config['Main']['TargetMode'] and not CurrentTarget then
                 SelectTarget()
             elseif not Holding then
                 UnselectTarget()
+            end
+        end
+    end
+
+    -- Camlock Bind
+    if input.KeyCode == Enum.KeyCode[Config['Camlock']['Bind']] then
+        if Config['Camlock']['BindMode'] == "Hold" then
+            CamlockHolding = true
+            if not CamlockTarget then
+                SelectCamlockTarget()
+            end
+        elseif Config['Camlock']['BindMode'] == "Toggle" then
+            CamlockEnabled = not CamlockEnabled
+            if CamlockEnabled and not CamlockTarget then
+                SelectCamlockTarget()
+            elseif not CamlockEnabled then
+                UnselectCamlockTarget()
             end
         end
     end
@@ -479,29 +502,31 @@ UserInputService.InputEnded:Connect(function(input, gpe)
     if input.KeyCode == Enum.KeyCode[Config['Main']['Bind']] then
         if Config['Main']['BindMode'] == "Hold" then
             Holding = false
-            CamlockHolding = false
             Config['SpreadModifier']['Enabled'] = false
             ExpanderActive = false
             UnselectTarget()
         end
     end
+
+    if input.KeyCode == Enum.KeyCode[Config['Camlock']['Bind']] then
+        if Config['Camlock']['BindMode'] == "Hold" then
+            CamlockHolding = false
+        end
+    end
 end)
 
---- ESP
+--// ESP
 
-
---// ESP Internal Settings
 local ESPSettings = {
-    NameOffset = Vector3.new(0, 3, 0), -- Name above head
-    DistanceOffset = Vector3.new(0, -3, 0), -- Distance below feet
+    NameOffset = Vector3.new(0, 3, 0), 
+    DistanceOffset = Vector3.new(0, -3, 0), 
     Font = 2, -- Plex font
     Size = 13, -- Text size
-    TracerThickness = 1, -- Tracer line thickness
-    TracerFromMouse = true, -- true = From mouse, false = From bottom center
+    TracerThickness = 1, 
+    TracerFromMouse = true, 
     TracerOffset = Vector2.new(0, 60),
 }
 
---// ESP Folder
 local ESPFolder = Instance.new("Folder")
 ESPFolder.Name = "ESPFolder"
 ESPFolder.Parent = game:GetService("CoreGui")
@@ -509,7 +534,6 @@ ESPFolder.Parent = game:GetService("CoreGui")
 local ESPObjects = {}
 local ESPEnabled = Config['ESP']['Main']['Enabled']
 
---// ESP Checks
 local function ESPChecks(player, character)
     local checks = Config['ESP']['Main']['Checks']['Players']
     if not checks then
@@ -541,7 +565,6 @@ local function ESPChecks(player, character)
     return true
 end
 
---// ESP Create
 local function CreateESPObject(player)
     if ESPObjects[player] then
         ESPObjects[player]['NameLabel']:Destroy()
@@ -577,7 +600,6 @@ local function CreateESPObject(player)
     }
 end
 
---// ESP Remove
 local function RemoveESPObject(player)
     if ESPObjects[player] then
         ESPObjects[player]['NameLabel']:Destroy()
@@ -591,7 +613,6 @@ Players.PlayerRemoving:Connect(function(player)
     RemoveESPObject(player)
 end)
 
---// ESP Keybind Toggle
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode[Config['ESP']['Main']['Bind']] then
@@ -599,7 +620,6 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
---// ESP Render Update
 RunService.RenderStepped:Connect(function()
     if not ESPEnabled then
         for _, objects in pairs(ESPObjects) do
