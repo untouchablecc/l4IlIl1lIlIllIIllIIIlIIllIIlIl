@@ -239,12 +239,15 @@ end
         return
     end
 
-    if not ValidateTarget() then
-        UnselectTarget()
-        return
+    if not CurrentTarget or not ValidateTarget() then
+    SelectTarget()
     end
 
     local targetPart = Mouse.Target
+
+    if not CurrentTarget then
+    return
+        end
 
     if Config['Main']['TargetMode'] then
         if CurrentTarget and CurrentTarget.Character and CurrentTarget.Character:FindFirstChild("HumanoidRootPart") then
