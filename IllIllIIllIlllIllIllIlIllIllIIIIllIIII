@@ -27,6 +27,11 @@ local RayParams = RaycastParams.new()
 RayParams.FilterType = Enum.RaycastFilterType.Blacklist
 RayParams.FilterDescendantsInstances = {LocalPlayer.Character, Camera}
 
+local function SameCamTriggerBind()
+    return Config['Main']['Bind'] == Config['Camlock']['Bind']
+end
+
+
 --// Wall Check
 local function WallCheck(part)
     if not part then return false end
@@ -454,8 +459,13 @@ end)
 
 --// Bind Handling
 
+local function SameCamTriggerBind()
+    return Config['Main']['Bind'] == Config['Camlock']['Bind']
+end
+
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
+
     if input.KeyCode == Enum.KeyCode[Config['Main']['Bind']] then
         if Config['Main']['BindMode'] == "Hold" then
             Holding = true
@@ -466,10 +476,26 @@ UserInputService.InputBegan:Connect(function(input, gpe)
                 SelectTarget()
             end
 
+            if SameCamTriggerBind() then
+                CamlockHolding = true
+                if not CamlockTarget then
+                    SelectCamlockTarget()
+                end
+            end
+
         elseif Config['Main']['BindMode'] == "Toggle" then
             Holding = not Holding
             Config['SpreadModifier']['Enabled'] = Holding
             ExpanderActive = Holding
+
+            if SameCamTriggerBind() then
+                CamlockEnabled = Holding
+                if CamlockEnabled and not CamlockTarget then
+                    SelectCamlockTarget()
+                elseif not CamlockEnabled then
+                    UnselectCamlockTarget()
+                end
+            end
 
             if Holding and Config['Main']['TargetMode'] and not CurrentTarget then
                 SelectTarget()
@@ -479,8 +505,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
         end
     end
 
-    -- Camlock Bind
-    if input.KeyCode == Enum.KeyCode[Config['Camlock']['Bind']] then
+    if input.KeyCode == Enum.KeyCode[Config['Camlock']['Bind']] and not SameCamTriggerBind() then
         if Config['Camlock']['BindMode'] == "Hold" then
             CamlockHolding = true
             if not CamlockTarget then
@@ -499,21 +524,27 @@ end)
 
 UserInputService.InputEnded:Connect(function(input, gpe)
     if gpe then return end
+
     if input.KeyCode == Enum.KeyCode[Config['Main']['Bind']] then
         if Config['Main']['BindMode'] == "Hold" then
             Holding = false
             Config['SpreadModifier']['Enabled'] = false
             ExpanderActive = false
             UnselectTarget()
+
+            if SameCamTriggerBind() then
+                CamlockHolding = false
+            end
         end
     end
 
-    if input.KeyCode == Enum.KeyCode[Config['Camlock']['Bind']] then
+    if input.KeyCode == Enum.KeyCode[Config['Camlock']['Bind']] and not SameCamTriggerBind() then
         if Config['Camlock']['BindMode'] == "Hold" then
             CamlockHolding = false
         end
     end
 end)
+
 
 --// ESP
 
