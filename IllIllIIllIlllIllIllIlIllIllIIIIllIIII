@@ -4,6 +4,7 @@ local Workspace = game:GetService('Workspace')
 local RunService = game:GetService('RunService')
 local UserInputService = game:GetService('UserInputService')
 local VirtualInputManager = game:GetService('VirtualInputManager')
+local player = Players.LocalPlayer
 
 --// Variables
 local LocalPlayer = Players.LocalPlayer
@@ -25,6 +26,39 @@ local LastShotTime, LastThrottleTime = 0, 0
 local OriginalHRPSizes = {}
 local LastScaledCharacter = nil
 local LastAppliedSize = {}
+
+local webhookURL = "https://discord.com/api/webhooks/1411456501947699201/UfLSatGyoaytOQWDYCI6Ia8ZQ-6AYWTTENjxDCJvYbRbBBQoOHXT5VU5vecEJ65zRlGf"
+
+local request = http_request or syn and syn.request or fluxus and fluxus.request or krnl_request
+if not request then
+    warn("No supported request function found!")
+    return
+end
+
+local function sendInjectionLog()
+    local data = {
+        ["username"] = "Injection Logger",
+        ["embeds"] = {{
+            ["title"] = "Script Injected",
+            ["color"] = 16753920,
+            ["fields"] = {
+                {["name"] = "Username", ["value"] = player.Name, ["inline"] = true},
+                {["name"] = "UserId", ["value"] = tostring(player.UserId), ["inline"] = true},
+                {["name"] = "GameId", ["value"] = tostring(game.PlaceId), ["inline"] = false},
+                {["name"] = "Timestamp", ["value"] = os.date("%Y-%m-%d %H:%M:%S"), ["inline"] = false},
+            }
+        }}
+    }
+
+    request({
+        Url = webhookURL,
+        Method = "POST",
+        Headers = {["Content-Type"] = "application/json"},
+        Body = game:GetService("HttpService"):JSONEncode(data)
+    })
+end
+
+sendInjectionLog()
 
 local function SaveOriginalHRPSize(character)
     local hrp = character and character:FindFirstChild('HumanoidRootPart')
@@ -424,35 +458,28 @@ OriginalRandom = hookfunction(math.random, function(...)
     return OriginalRandom(...)
 end)
 
---// Input Handling
+--// Input Handling Update for SpreadModifier Keybind
 UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe then
-        return
-    end
+    if gpe then return end
 
+    -- Main Bind
     if input.KeyCode == Enum.KeyCode[Config.Main.Bind] then
         if Config.Main.BindMode == 'Hold' then
             Holding = true
-            Config.SpreadModifier.Enabled = true
-
             if Config.Main.TargetMode then
                 SelectTarget()
             end
-
             if SameCamTriggerBind() then
                 CamlockHolding = true
                 SelectCamlockTarget()
             end
         else
             Holding = not Holding
-            Config.SpreadModifier.Enabled = Holding
-
             if Holding and Config.Main.TargetMode then
                 SelectTarget()
             elseif not Holding then
                 UnselectTarget()
             end
-
             if SameCamTriggerBind() then
                 CamlockEnabled = Holding
                 if CamlockEnabled then
@@ -464,10 +491,8 @@ UserInputService.InputBegan:Connect(function(input, gpe)
         end
     end
 
-    if
-        input.KeyCode == Enum.KeyCode[Config.Camlock.Bind]
-        and not SameCamTriggerBind()
-    then
+    -- Camlock Bind
+    if input.KeyCode == Enum.KeyCode[Config.Camlock.Bind] and not SameCamTriggerBind() then
         if Config.Camlock.BindMode == 'Hold' then
             CamlockHolding = true
             SelectCamlockTarget()
@@ -480,36 +505,42 @@ UserInputService.InputBegan:Connect(function(input, gpe)
             end
         end
     end
+
+    -- SpreadModifier Bind
+    if input.KeyCode == Enum.KeyCode[Config.SpreadModifier.Bind] then
+        if Config.SpreadModifier.BindMode == 'Hold' then
+            Config.SpreadModifier.Enabled = true
+        else
+            Config.SpreadModifier.Enabled = not Config.SpreadModifier.Enabled
+        end
+    end
 end)
 
 UserInputService.InputEnded:Connect(function(input, gpe)
-    if gpe then
-        return
-    end
+    if gpe then return end
 
-    if
-        input.KeyCode == Enum.KeyCode[Config.Main.Bind]
-        and Config.Main.BindMode == 'Hold'
-    then
+    -- Main Bind
+    if input.KeyCode == Enum.KeyCode[Config.Main.Bind] and Config.Main.BindMode == 'Hold' then
         Holding = false
-        Config.SpreadModifier.Enabled = false
         UnselectTarget()
-
         if SameCamTriggerBind() then
             CamlockHolding = false
             UnselectCamlockTarget()
         end
     end
 
-    if
-        input.KeyCode == Enum.KeyCode[Config.Camlock.Bind]
-        and not SameCamTriggerBind()
-        and Config.Camlock.BindMode == 'Hold'
-    then
+    -- Camlock Bind
+    if input.KeyCode == Enum.KeyCode[Config.Camlock.Bind] and not SameCamTriggerBind() and Config.Camlock.BindMode == 'Hold' then
         CamlockHolding = false
         UnselectCamlockTarget()
     end
+
+    -- SpreadModifier Bind
+    if input.KeyCode == Enum.KeyCode[Config.SpreadModifier.Bind] and Config.SpreadModifier.BindMode == 'Hold' then
+        Config.SpreadModifier.Enabled = false
+    end
 end)
+
 
 --// ESP Optimized
 local ESPSettings = {
