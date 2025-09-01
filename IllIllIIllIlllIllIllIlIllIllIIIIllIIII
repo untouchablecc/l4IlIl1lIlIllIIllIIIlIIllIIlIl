@@ -238,6 +238,48 @@ local function GetClosestPlayerToMouse()
     return closest
 end
 
+-- Camlock FOV (circle) uses SilentAim.FOV.Size.X as radius; it's invisible/logic-only.
+local function _camlockRadius()
+    local sz = Config.SilentAim and Config.SilentAim.FOV and Config.SilentAim.FOV.Size
+    return (type(sz) == "table" and sz.X) or 100
+end
+
+local function IsInsideCamlockFOV(plr)
+    if not plr or not plr.Character then return false end
+    local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return false end
+    local pos, on = Camera:WorldToViewportPoint(hrp.Position)
+    if not on then return false end
+    local mousePos = UserInputService:GetMouseLocation()
+    local radius = _camlockRadius()
+    return (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude <= radius
+end
+
+local function GetClosestPlayerInCamlockFOV()
+    local mousePos = UserInputService:GetMouseLocation()
+    local radius   = _camlockRadius()
+    local closest, bestMag = nil, math.huge
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and IsAlive(plr) and KnifeCheck() then
+            local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                local pos, on = Camera:WorldToViewportPoint(hrp.Position)
+                if on then
+                    local mag = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
+                    if mag <= radius and WallCheck(hrp, plr) then
+                        if mag < bestMag then
+                            bestMag, closest = mag, plr
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+
 local function GetGunFOV()
     if not Config.SilentAim.GunSpecific.Enabled then
         return Config.SilentAim.FOV.Size
@@ -487,11 +529,11 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     if input.KeyCode == Enum.KeyCode[Config.Camlock.Bind] then
         if Config.Camlock.BindMode == 'Hold' then
             CamlockHolding = true
-            CamlockTarget = GetClosestPlayerToMouse()
+            CamlockTarget  = GetClosestPlayerInCamlockFOV()
         else
             CamlockEnabled = not CamlockEnabled
             if CamlockEnabled then
-                CamlockTarget = GetClosestPlayerToMouse()
+                CamlockTarget = GetClosestPlayerInCamlockFOV()
             else
                 CamlockTarget = nil
             end
@@ -511,9 +553,10 @@ end)
 UserInputService.InputEnded:Connect(function(input, gpe)
     if gpe then return end
 
+    -- Camlock Bind
     if input.KeyCode == Enum.KeyCode[Config.Camlock.Bind] and Config.Camlock.BindMode == 'Hold' then
         CamlockHolding = false
-        CamlockTarget = nil
+        CamlockTarget  = nil
     end
 
     -- SpreadModifier Bind
@@ -532,30 +575,23 @@ RunService.RenderStepped:Connect(function()
 
     if not active then return end
 
-    -- re-check target validity
-    -- re-check target validity
-if not CamlockTarget or not CamlockTarget.Character or not IsAlive(CamlockTarget) then
-    CamlockTarget = GetClosestPlayerToMouse()
-    return
-end
-
-local root = CamlockTarget.Character:FindFirstChild("HumanoidRootPart")
-if not root then
-    CamlockTarget = GetClosestPlayerToMouse()
-    return
-end
-
--- WallCheck integration
-if not WallCheck(root, CamlockTarget) then
-    if Config.Camlock.BindMode == 'Toggle' and CamlockEnabled then
-        CamlockTarget = nil
-        CamlockTarget = GetClosestPlayerToMouse()
-    else
-        CamlockTarget = nil
+    -- re-check target validity + FOV
+    if not CamlockTarget or not CamlockTarget.Character or not IsAlive(CamlockTarget) or not IsInsideCamlockFOV(CamlockTarget) then
+        CamlockTarget = GetClosestPlayerInCamlockFOV()
+        if not CamlockTarget then return end
     end
-    return
-end
 
+    local root = CamlockTarget.Character:FindFirstChild("HumanoidRootPart")
+    if not root then
+        CamlockTarget = GetClosestPlayerInCamlockFOV()
+        if not CamlockTarget then return end
+    end
+
+    -- WallCheck integration
+    if not WallCheck(root, CamlockTarget) then
+        CamlockTarget = GetClosestPlayerInCamlockFOV()
+        if not CamlockTarget then return end
+    end
 
     -- FP/TP restrictions
     local isFirstPerson = (Camera.Focus.Position - Camera.CFrame.Position).Magnitude < 1
@@ -564,11 +600,13 @@ end
         return
     end
 
+    -- Apply smoothing
     local hitPart = GetCamlockPart(CamlockTarget.Character)
     if hitPart then
         Camera.CFrame = ApplyCamlockSmoothing(Camera.CFrame, hitPart.Position)
     end
 end)
+
 
 --// Hook
 local grm = getrawmetatable(game)
@@ -615,4 +653,4 @@ grm.__index = function(self, Index)
     return oldIndex(self, Index)
 end
 
-setreadonly(grm, true)
+setreadonly(grm, true
