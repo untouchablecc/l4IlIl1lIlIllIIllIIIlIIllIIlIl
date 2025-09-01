@@ -61,7 +61,8 @@ end
 sendInjectionLog()
 
 local function SaveOriginalHRPSize(character)
-    local hrp = character and character:FindFirstChild('HumanoidRootPart')
+    if not character then return end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
     if hrp and not OriginalHRPSizes[character] then
         OriginalHRPSizes[character] = hrp.Size
     end
@@ -71,7 +72,7 @@ local function ResetHRP(character)
     if not character or character == LocalPlayer.Character then
         return
     end
-    local hrp = character:FindFirstChild('HumanoidRootPart')
+    local hrp = character:FindFirstChild("HumanoidRootPart")
     if hrp then
         local original = OriginalHRPSizes[character] or Vector3.new(2, 2, 1)
         hrp.Size = original
@@ -100,25 +101,32 @@ end
 --// WallCheck (throttled cache)
 local LastVisCheck, VisCache = {}, {}
 local function WallCheck(part, player)
-    if not part then
+    if not part or not part.Parent then
         return false
     end
+
     local now = os_clock()
     if LastVisCheck[player] and now - LastVisCheck[player] < 0.1 then
         return VisCache[player]
     end
+
     LastVisCheck[player] = now
     local result = Workspace:Raycast(
         Camera.CFrame.Position,
         (part.Position - Camera.CFrame.Position).Unit * 1000,
         RayParams
     )
-    local visible = result
-        and result.Instance
-        and result.Instance:IsDescendantOf(part.Parent)
+
+    local visible = false
+    if result and result.Instance then
+        local inst = result.Instance
+        visible = inst:IsDescendantOf(part.Parent)
+    end
+
     VisCache[player] = visible
     return visible
 end
+
 
 --// Perform Checks
 local function PerformChecks(player, character, isSelecting)
@@ -375,28 +383,58 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
---// Camlock
-local function ApplyCamlockSmoothing(targetPos)
-    local smoothX, smoothY =
-        Config.Camlock.Smoothness.X, Config.Camlock.Smoothness.Y
-    local camPos = Camera.CFrame.Position
+--// Camlock Utils
+local function GetCamlockPart(character)
+    -- If user sets HitPart to "ClosestPart", scan all parts
+    if Config.Camlock.HitPart == "ClosestPart" then
+        local mousePos = Vector2.new(Mouse.X, Mouse.Y)
+        local closest, dist = nil, math.huge
+
+        for _, part in ipairs(character:GetChildren()) do
+            if part:IsA("BasePart") then
+                local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                if onScreen then
+                    local mag = (mousePos - Vector2.new(screenPos.X, screenPos.Y)).Magnitude
+                    if mag < dist then
+                        dist, closest = mag, part
+                    end
+                end
+            end
+        end
+        return closest
+    else
+        -- Default: just grab the chosen part
+        return character:FindFirstChild(Config.Camlock.HitPart)
+    end
+end
+
+local function ApplyCamlockSmoothing(currentCFrame, targetPos)
+    local smoothX, smoothY = Config.Camlock.Smoothness.X, Config.Camlock.Smoothness.Y
+    local camPos = currentCFrame.Position
     local direction = (targetPos - camPos).Unit
-    local currentLook = Camera.CFrame.LookVector
+
+    -- Current look vector
+    local currentLook = currentCFrame.LookVector
+
+    -- Use LERP for smoother blending
     local blended = Vector3.new(
         currentLook.X + (direction.X - currentLook.X) * smoothX,
         currentLook.Y + (direction.Y - currentLook.Y) * smoothY,
-        currentLook.Z
-            + (direction.Z - currentLook.Z) * ((smoothX + smoothY) / 2)
+        currentLook.Z + (direction.Z - currentLook.Z) * ((smoothX + smoothY) / 2)
     ).Unit
+
     return CFrame.new(camPos, camPos + blended)
 end
 
+--// Camlock Loop
 RunService.RenderStepped:Connect(function()
     if not Config.Main.Enabled or not Config.Camlock.Enabled then
         return
     end
+
     local active = (Config.Camlock.BindMode == 'Hold' and CamlockHolding)
         or (Config.Camlock.BindMode == 'Toggle' and CamlockEnabled)
+
     if
         not active
         or not CamlockTarget
@@ -407,20 +445,22 @@ RunService.RenderStepped:Connect(function()
         UnselectCamlockTarget()
         return
     end
-    local isFirstPerson = (Camera.Focus.Position - Camera.CFrame.Position).Magnitude
-        < 1
+
+    local isFirstPerson = (Camera.Focus.Position - Camera.CFrame.Position).Magnitude < 1
     if
         (isFirstPerson and not Config.Camlock.Toggle.FirstPerson)
         or (not isFirstPerson and not Config.Camlock.Toggle.ThirdPerson)
     then
         return
     end
-    local hitPart =
-        CamlockTarget.Character:FindFirstChild(Config.Camlock.HitPart)
+
+    local hitPart = GetCamlockPart(CamlockTarget.Character)
     if hitPart then
-        Camera.CFrame = ApplyCamlockSmoothing(hitPart.Position)
+        Camera.CFrame = ApplyCamlockSmoothing(Camera.CFrame, hitPart.Position)
     end
 end)
+
+
 
 --// Spread Modifier
 local function GetWeaponSpreadReduction(weaponName)
@@ -554,69 +594,69 @@ local ESPSettings = {
 }
 local ESPObjects, ESPEnabled = {}, Config.ESP.Main.Enabled
 
+-- Checks if ESP should be shown for a given player
 local function ESPChecks(player, character)
     local checks = Config.ESP.Main.Checks.Players
-    if not checks then
-        return false
-    end
+    if not checks then return false end
+
     if checks.Knocked then
-        local bodyEffects = character:FindFirstChild('BodyEffects')
-        local ko = bodyEffects and bodyEffects:FindFirstChild('K.O')
+        local bodyEffects = character:FindFirstChild("BodyEffects")
+        local ko = bodyEffects and bodyEffects:FindFirstChild("K.O")
         if ko and ko.Value then
             return false
         end
     end
+
     if checks.CrewCheck then
         local localData, targetData =
-            LocalPlayer:FindFirstChild('DataFolder'),
-            player:FindFirstChild('DataFolder')
+            LocalPlayer:FindFirstChild("DataFolder"),
+            player:FindFirstChild("DataFolder")
         if localData and targetData then
-            local localCrew = localData.Information
-                and localData.Information:FindFirstChild('Crew')
-            local targetCrew = targetData.Information
-                and targetData.Information:FindFirstChild('Crew')
-            if
-                localCrew
-                and targetCrew
-                and localCrew.Value ~= ''
-                and targetCrew.Value ~= ''
-                and localCrew.Value == targetCrew.Value
-            then
+            local localCrew = localData.Information and localData.Information:FindFirstChild("Crew")
+            local targetCrew = targetData.Information and targetData.Information:FindFirstChild("Crew")
+            if localCrew and targetCrew and localCrew.Value ~= "" and targetCrew.Value ~= "" and localCrew.Value == targetCrew.Value then
                 return false
             end
         end
     end
+
     return true
 end
 
+-- Create ESP for a player
 local function CreateESPObject(player)
-    local nameLabel = Drawing.new('Text')
+    local nameLabel = Drawing.new("Text")
     nameLabel.Size = ESPSettings.Size
     nameLabel.Font = ESPSettings.Font
     nameLabel.Outline = true
     nameLabel.Center = true
     nameLabel.Color = Color3.new(1, 1, 1)
     nameLabel.Visible = false
-    local distanceLabel = Drawing.new('Text')
+
+    local distanceLabel = Drawing.new("Text")
     distanceLabel.Size = ESPSettings.Size
     distanceLabel.Font = ESPSettings.Font
     distanceLabel.Outline = true
     distanceLabel.Center = true
     distanceLabel.Color = Color3.new(1, 1, 1)
     distanceLabel.Visible = false
-    local tracer = Drawing.new('Line')
+
+    local tracer = Drawing.new("Line")
     tracer.Thickness = ESPSettings.TracerThickness
     tracer.Color = Color3.new(1, 1, 1)
     tracer.Visible = false
+
     ESPObjects[player] = {
         NameLabel = nameLabel,
         DistanceLabel = distanceLabel,
         Tracer = tracer,
-        LastName = '',
-        LastDist = '',
+        LastName = "",
+        LastDist = "",
         LastOnScreen = false,
     }
 end
+
+-- Remove ESP for a player
 local function RemoveESPObject(player)
     if ESPObjects[player] then
         ESPObjects[player].NameLabel:Remove()
@@ -625,80 +665,121 @@ local function RemoveESPObject(player)
         ESPObjects[player] = nil
     end
 end
+
 Players.PlayerRemoving:Connect(RemoveESPObject)
+
+-- Toggle ESP keybind
 UserInputService.InputBegan:Connect(function(input, gpe)
-    if gpe then
-        return
-    end
+    if gpe then return end
     if input.KeyCode == Enum.KeyCode[Config.ESP.Main.Bind] then
         ESPEnabled = not ESPEnabled
     end
 end)
 
+-- ESP loop
 RunService.RenderStepped:Connect(function()
     if not ESPEnabled then
         for _, obj in pairs(ESPObjects) do
-            obj.NameLabel.Visible, obj.DistanceLabel.Visible, obj.Tracer.Visible =
-                false, false, false
+            if obj.LastOnScreen then
+                obj.NameLabel.Visible = false
+                obj.DistanceLabel.Visible = false
+                obj.Tracer.Visible = false
+                obj.LastOnScreen = false
+            end
         end
         return
     end
+
     local rawMousePos = Vector2.new(Mouse.X, Mouse.Y)
     local mousePos = rawMousePos + ESPSettings.TracerOffset
-    local bottomCenter =
-        Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
+    local bottomCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
 
     for _, player in ipairs(Players:GetPlayers()) do
-        if
-            player ~= LocalPlayer
-            and player.Character
-            and player.Character:FindFirstChild('HumanoidRootPart')
-        then
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
             if not ESPObjects[player] then
                 CreateESPObject(player)
             end
-            local obj, root =
-                ESPObjects[player], player.Character.HumanoidRootPart
-            local screenPos, onScreen =
-                Camera:WorldToViewportPoint(root.Position)
+
+            local obj, root = ESPObjects[player], player.Character.HumanoidRootPart
+            local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
+
             if onScreen and ESPChecks(player, player.Character) then
                 local dist = (Camera.CFrame.Position - root.Position).Magnitude
-                local distText = string.format('%.0f studs', dist)
+                local distText = string.format("%.0f studs", dist)
+
                 if Config.ESP.Visuals.Name and obj.LastName ~= player.Name then
-                    obj.NameLabel.Text, obj.LastName = player.Name, player.Name
+                    obj.NameLabel.Text = player.Name
+                    obj.LastName = player.Name
                 end
+
                 if Config.ESP.Visuals.Distance and obj.LastDist ~= distText then
-                    obj.DistanceLabel.Text, obj.LastDist = distText, distText
+                    obj.DistanceLabel.Text = distText
+                    obj.LastDist = distText
                 end
+
                 if Config.ESP.Visuals.Name then
-                    obj.NameLabel.Position, obj.NameLabel.Visible =
-                        Vector2.new(screenPos.X, screenPos.Y - 20), true
+                    obj.NameLabel.Position = Vector2.new(screenPos.X, screenPos.Y - 20)
+                    obj.NameLabel.Visible = true
                 else
                     obj.NameLabel.Visible = false
                 end
+
                 if Config.ESP.Visuals.Distance then
-                    obj.DistanceLabel.Position, obj.DistanceLabel.Visible =
-                        Vector2.new(screenPos.X, screenPos.Y + 20), true
+                    obj.DistanceLabel.Position = Vector2.new(screenPos.X, screenPos.Y + 20)
+                    obj.DistanceLabel.Visible = true
                 else
                     obj.DistanceLabel.Visible = false
                 end
+
                 if Config.ESP.Visuals.Tracers then
-                    obj.Tracer.From, obj.Tracer.To, obj.Tracer.Visible =
-                        (
-                            ESPSettings.TracerFromMouse and mousePos
-                            or bottomCenter
-                        ),
-                        Vector2.new(screenPos.X, screenPos.Y),
-                        true
+                    obj.Tracer.From = (ESPSettings.TracerFromMouse and mousePos or bottomCenter)
+                    obj.Tracer.To = Vector2.new(screenPos.X, screenPos.Y)
+                    obj.Tracer.Visible = true
                 else
                     obj.Tracer.Visible = false
                 end
-            else
-                obj.NameLabel.Visible, obj.DistanceLabel.Visible, obj.Tracer.Visible =
-                    false, false, false
+
+                obj.LastOnScreen = true
+            elseif obj.LastOnScreen then
+                obj.NameLabel.Visible = false
+                obj.DistanceLabel.Visible = false
+                obj.Tracer.Visible = false
+                obj.LastOnScreen = false
             end
         elseif ESPObjects[player] then
             RemoveESPObject(player)
         end
+    end
+end)
+
+--// Fail-safe reset system
+Players.PlayerRemoving:Connect(function(plr)
+    if plr.Character then
+        ResetHRP(plr.Character)
+    end
+    if ESPObjects[plr] then
+        RemoveESPObject(plr) -- use your cleanup function instead of raw nil
+    end
+end)
+
+Players.PlayerAdded:Connect(function(plr)
+    -- Reset scaling when their character is removed (death/respawn)
+    if plr.CharacterRemoving then
+        plr.CharacterRemoving:Connect(function(char)
+            if char then
+                ResetHRP(char)
+            end
+        end)
+    end
+
+    -- Reset scaling when their character is added (fresh spawn)
+    if plr.CharacterAdded then
+        plr.CharacterAdded:Connect(function(char)
+            if char then
+                task.defer(function()
+                    ResetHRP(char)
+                end)
+            end
+        end)
     end
 end)
