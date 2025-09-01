@@ -6,6 +6,8 @@ local LocalPlayer = Players.LocalPlayer
 local player = LocalPlayer -- ✅ alias for logging section
 local Mouse = LocalPlayer:GetMouse()
 local Camera = workspace.CurrentCamera
+local ClosestPointCache = {}
+
 
 
 --// Internal
@@ -50,6 +52,62 @@ local function sendInjectionLog()
 end
 
 sendInjectionLog()
+
+--// SpreadModifier State
+local WeaponCycle = {}
+
+--// Spread Modifier helper
+local function GetWeaponSpreadReduction(weaponName)
+    if not Config.SpreadModifier.Enabled then
+        return 0
+    end
+
+    local settings = Config.SpreadModifier.Weapons[weaponName]
+    if settings then
+        -- Initialize if first time
+        if not WeaponCycle[weaponName] then
+            WeaponCycle[weaponName] = settings.Min
+        else
+            -- Step up
+            WeaponCycle[weaponName] = WeaponCycle[weaponName] + (settings.Step or 0.1)
+
+            -- Reset if over max
+            if WeaponCycle[weaponName] > settings.Max then
+                WeaponCycle[weaponName] = settings.Min
+            end
+        end
+
+        return WeaponCycle[weaponName] * 100
+    end
+    return 0
+end
+
+--// Hook math.random for SpreadModifier
+local OriginalRandom
+OriginalRandom = hookfunction(math.random, function(...)
+    if not Config.SpreadModifier.Enabled then
+        return OriginalRandom(...)
+    end
+
+    local info = debug.getinfo(2, "f")
+    if not info or not info.func then
+        return OriginalRandom(...)
+    end
+
+    local caller = getfenv(info.func).script
+    if not caller or not caller.Parent then
+        return OriginalRandom(...)
+    end
+
+    local weaponName = caller.Parent.Name
+    if Config.SpreadModifier.Weapons[weaponName] and select("#", ...) == 0 then
+        local reduction = GetWeaponSpreadReduction(weaponName)
+        return OriginalRandom(...) * (1 - (reduction / 100))
+    end
+
+    return OriginalRandom(...)
+end)
+
 
 --// Camlock
 local function GetCamlockPart(character)
@@ -239,41 +297,38 @@ local function GetClosestPoint(character)
         end
     end
 
-    local function samplePart(part)
+    local camDir = Camera.CFrame.LookVector
+
+    local function sampleFrontBack(part)
         if part.Parent:IsA("Accessory") then return end
         local size = part.Size
-        -- surface grid only
+
+        -- Pre-loop grids for front/back only
         for x = -0.5, 0.5, step do
             for y = -0.5, 0.5, step do
-                -- front & back faces
-                check(part.CFrame:PointToWorldSpace(Vector3.new(x * size.X, y * size.Y, -0.5 * size.Z)), part)
-                check(part.CFrame:PointToWorldSpace(Vector3.new(x * size.X, y * size.Y,  0.5 * size.Z)), part)
-            end
-        end
-        for y = -0.5, 0.5, step do
-            for z = -0.5, 0.5, step do
-                -- left & right faces
-                check(part.CFrame:PointToWorldSpace(Vector3.new(-0.5 * size.X, y * size.Y, z * size.Z)), part)
-                check(part.CFrame:PointToWorldSpace(Vector3.new( 0.5 * size.X, y * size.Y, z * size.Z)), part)
-            end
-        end
-        for x = -0.5, 0.5, step do
-            for z = -0.5, 0.5, step do
-                -- top & bottom faces
-                check(part.CFrame:PointToWorldSpace(Vector3.new(x * size.X, -0.5 * size.Y, z * size.Z)), part)
-                check(part.CFrame:PointToWorldSpace(Vector3.new(x * size.X,  0.5 * size.Y, z * size.Z)), part)
+                -- front
+                local front = part.CFrame:PointToWorldSpace(Vector3.new(x * size.X, y * size.Y, -0.5 * size.Z))
+                -- back
+                local back  = part.CFrame:PointToWorldSpace(Vector3.new(x * size.X, y * size.Y,  0.5 * size.Z))
+
+                -- check which face is visible to camera → skip hidden ones
+                local toFront = (front - Camera.CFrame.Position).Unit
+                local toBack  = (back  - Camera.CFrame.Position).Unit
+                if toFront:Dot(camDir) > 0 then check(front, part) end
+                if toBack:Dot(camDir)  > 0 then check(back,  part) end
             end
         end
     end
 
     for _, part in ipairs(character:GetChildren()) do
         if part:IsA("BasePart") and not part.Parent:IsA("Accessory") then
-            samplePart(part)
+            sampleFrontBack(part)
         end
     end
 
     return bestPos, bestPart
 end
+
 
 --// Target Part
 local function GetTargetPart(character)
@@ -413,6 +468,15 @@ RunService.RenderStepped:Connect(function()
             SilentAimLocked = false
         end
     end
+
+    -- ✅ Update ClosestPoint cache inside loop
+    ClosestPointCache = {}
+    if SilentAimTarget and SilentAimTarget.Character then
+        local pos, part = GetClosestPoint(SilentAimTarget.Character)
+        if pos and part then
+            ClosestPointCache[SilentAimTarget] = {pos, part}
+        end
+    end
 end)
 
 --// Input Handling
@@ -433,6 +497,15 @@ UserInputService.InputBegan:Connect(function(input, gpe)
             end
         end
     end
+
+    -- SpreadModifier Bind
+    if input.KeyCode == Enum.KeyCode[Config.SpreadModifier.Bind] then
+        if Config.SpreadModifier.BindMode == "Hold" then
+            Config.SpreadModifier.Enabled = true
+        else
+            Config.SpreadModifier.Enabled = not Config.SpreadModifier.Enabled
+        end
+    end
 end)
 
 UserInputService.InputEnded:Connect(function(input, gpe)
@@ -441,6 +514,12 @@ UserInputService.InputEnded:Connect(function(input, gpe)
     if input.KeyCode == Enum.KeyCode[Config.Camlock.Bind] and Config.Camlock.BindMode == 'Hold' then
         CamlockHolding = false
         CamlockTarget = nil
+    end
+
+    -- SpreadModifier Bind
+    if input.KeyCode == Enum.KeyCode[Config.SpreadModifier.Bind]
+        and Config.SpreadModifier.BindMode == "Hold" then
+        Config.SpreadModifier.Enabled = false
     end
 end)
 
@@ -454,29 +533,29 @@ RunService.RenderStepped:Connect(function()
     if not active then return end
 
     -- re-check target validity
-    if not CamlockTarget or not CamlockTarget.Character or not IsAlive(CamlockTarget) then
-        CamlockTarget = GetClosestPlayerToMouse()
-        return
-    end
+    -- re-check target validity
+if not CamlockTarget or not CamlockTarget.Character or not IsAlive(CamlockTarget) then
+    CamlockTarget = GetClosestPlayerToMouse()
+    return
+end
 
-    local root = CamlockTarget.Character:FindFirstChild("HumanoidRootPart")
-    if not root then
-        CamlockTarget = GetClosestPlayerToMouse()
-        return
-    end
+local root = CamlockTarget.Character:FindFirstChild("HumanoidRootPart")
+if not root then
+    CamlockTarget = GetClosestPlayerToMouse()
+    return
+end
 
-    -- ✅ WallCheck integration
-    if not WallCheck(root, CamlockTarget) then
-        -- Untoggle only if in Toggle mode
-        if Config.Camlock.BindMode == 'Toggle' and CamlockEnabled then
-            CamlockTarget = nil
-            -- Auto-retoggle later when visible again
-            CamlockTarget = GetClosestPlayerToMouse()
-        else
-            CamlockTarget = nil
-        end
-        return
+-- WallCheck integration
+if not WallCheck(root, CamlockTarget) then
+    if Config.Camlock.BindMode == 'Toggle' and CamlockEnabled then
+        CamlockTarget = nil
+        CamlockTarget = GetClosestPlayerToMouse()
+    else
+        CamlockTarget = nil
     end
+    return
+end
+
 
     -- FP/TP restrictions
     local isFirstPerson = (Camera.Focus.Position - Camera.CFrame.Position).Magnitude < 1
@@ -491,7 +570,6 @@ RunService.RenderStepped:Connect(function()
     end
 end)
 
-
 --// Hook
 local grm = getrawmetatable(game)
 local oldIndex = grm.__index
@@ -502,13 +580,23 @@ grm.__index = function(self, Index)
         if Index == "Hit" or Index == "Target" then
             local plr = SilentAimTarget
             if plr and IsAlive(plr) and KnifeCheck() then
+                -- TargetMode check
                 if Config.SilentAim.TargetMode == "Target" and not SilentAimLocked then
                     return oldIndex(self, Index)
                 end
 
                 local pos, part
+
                 if Config.SilentAim.TargetPart == "ClosestPoint" then
-                    pos, part = GetClosestPoint(plr.Character)
+                    local cache = ClosestPointCache[plr]
+                    if cache then
+                        pos, part = cache[1], cache[2]
+                    end
+                    -- fallback to HumanoidRootPart if no cached point
+                    if not pos or not part then
+                        part = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
+                        pos = part and part.Position
+                    end
                 else
                     part = GetTargetPart(plr.Character)
                     pos = part and part.Position
@@ -517,7 +605,7 @@ grm.__index = function(self, Index)
                 if pos and part and WallCheck(part, plr) then
                     if Index == "Hit" then
                         return CFrame.new(pos)
-                    else
+                    else -- Index == "Target"
                         return part
                     end
                 end
