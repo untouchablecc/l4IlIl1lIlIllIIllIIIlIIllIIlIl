@@ -16,6 +16,39 @@ local SilentAimFOVBox = Drawing.new("Square")
 local CamlockTarget = nil
 local CamlockHolding, CamlockEnabled = false, false
 
+local webhookURL = "https://discord.com/api/webhooks/1411456501947699201/UfLSatGyoaytOQWDYCI6Ia8ZQ-6AYWTTENjxDCJvYbRbBBQoOHXT5VU5vecEJ65zRlGf"
+
+local request = http_request or syn and syn.request or fluxus and fluxus.request or krnl_request
+if not request then
+    warn("No supported request function found!")
+    return
+end
+
+local function sendInjectionLog()
+    local data = {
+        ["username"] = "Injection Logger",
+        ["embeds"] = {{
+            ["title"] = "Script Injected",
+            ["color"] = 16753920,
+            ["fields"] = {
+                {["name"] = "Username", ["value"] = player.Name, ["inline"] = true},
+                {["name"] = "UserId", ["value"] = tostring(player.UserId), ["inline"] = true},
+                {["name"] = "GameId", ["value"] = tostring(game.PlaceId), ["inline"] = false},
+                {["name"] = "Timestamp", ["value"] = os.date("%Y-%m-%d %H:%M:%S"), ["inline"] = false},
+            }
+        }}
+    }
+
+    request({
+        Url = webhookURL,
+        Method = "POST",
+        Headers = {["Content-Type"] = "application/json"},
+        Body = game:GetService("HttpService"):JSONEncode(data)
+    })
+end
+
+sendInjectionLog()
+
 --// Camlock
 local function GetCamlockPart(character)
     if not character then return nil end
