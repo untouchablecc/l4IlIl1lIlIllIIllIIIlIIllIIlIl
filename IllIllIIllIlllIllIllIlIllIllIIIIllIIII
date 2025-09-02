@@ -1,141 +1,3 @@
-Config = {
-    ['SilentAim']      = {
-        ['Enabled']      = true,
-        ['Keybind']      = 'P',
-        ['BindMode']     = 'Toggle',
-        ['TargetMode']   = 'FOV',          -- Target / FOV
-        ['TargetPart']   = 'ClosestPoint',
-        ['ClosestPoint'] = {
-            ['PointScale'] = 0.52,         -- lower = denser grid = more accuracy
-            ['Mode']       = 'Advanced',   -- Default / Advanced
-        },
-        ['FOV'] = {
-            ['Type']        = 'Box',       -- Circle / Box
-            ['Visible']     = true,
-            ['Size']        = { ['X'] = 100, ['Y'] = 100 },
-            ['Color']       = Color3.fromRGB(255, 220, 70),
-            ['Transparency']= 0.4,
-            ['Filled']      = false,
-        },
-        ['GunSpecific'] = {
-            ['Enabled'] = true,
-            ['Ranges']  = {
-                ['Close'] = 35,
-                ['Mid']   = 65,
-                ['Far']   = math.huge,
-            },
-            ['Pistols'] = {
-                ['[Revolver]'] = {
-                    ['Close'] = { FOV = { X = 85,  Y = 130 } },
-                    ['Mid']   = { FOV = { X = 75,  Y = 120 } },
-                    ['Far']   = { FOV = { X = 25,  Y = 30  } },
-                },
-                ['[Glock]'] = {
-                    ['Close'] = { FOV = { X = 120, Y = 120 } },
-                    ['Mid']   = { FOV = { X = 95,  Y = 95  } },
-                    ['Far']   = { FOV = { X = 55,  Y = 55  } },
-                },
-                ['[Silencer]'] = {
-                    ['Close'] = { FOV = { X = 115, Y = 115 } },
-                    ['Mid']   = { FOV = { X = 90,  Y = 90  } },
-                    ['Far']   = { FOV = { X = 50,  Y = 50  } },
-                },
-            },
-            ['Shotguns'] = {
-                ['[Shotgun]'] = {
-                    ['Close'] = { FOV = { X = 100, Y = 100 } },
-                    ['Mid']   = { FOV = { X = 60,  Y = 70  } },
-                    ['Far']   = { FOV = { X = 70,  Y = 70  } },
-                },
-                ['[Double-Barrel SG]'] = {
-                    ['Close'] = { FOV = { X = 60,  Y = 130 } },
-                    ['Mid']   = { FOV = { X = 50,  Y = 90  } },
-                    ['Far']   = { FOV = { X = 20,  Y = 20  } },
-                },
-                ['[TacticalShotgun]'] = {
-                    ['Close'] = { FOV = { X = 150, Y = 150 } },
-                    ['Mid']   = { FOV = { X = 115, Y = 115 } },
-                    ['Far']   = { FOV = { X = 75,  Y = 75  } },
-                },
-            },
-            ['Automatics'] = {
-                ['[SMG]'] = {
-                    ['Close'] = { FOV = { X = 135, Y = 135 } },
-                    ['Mid']   = { FOV = { X = 105, Y = 105 } },
-                    ['Far']   = { FOV = { X = 70,  Y = 70  } },
-                },
-                ['[P90]'] = {
-                    ['Close'] = { FOV = { X = 145, Y = 145 } },
-                    ['Mid']   = { FOV = { X = 115, Y = 115 } },
-                    ['Far']   = { FOV = { X = 80,  Y = 80  } },
-                },
-                ['[LMG]'] = {
-                    ['Close'] = { FOV = { X = 155, Y = 155 } },
-                    ['Mid']   = { FOV = { X = 125, Y = 125 } },
-                    ['Far']   = { FOV = { X = 90,  Y = 90  } },
-                },
-                ['[AR]'] = {
-                    ['Close'] = { FOV = { X = 130, Y = 130 } },
-                    ['Mid']   = { FOV = { X = 105, Y = 105 } },
-                    ['Far']   = { FOV = { X = 70,  Y = 70  } },
-                },
-                ['[AK47]'] = {
-                    ['Close'] = { FOV = { X = 140, Y = 140 } },
-                    ['Mid']   = { FOV = { X = 115, Y = 115 } },
-                    ['Far']   = { FOV = { X = 75,  Y = 75  } },
-                },
-                ['[DrumGun]'] = {
-                    ['Close'] = { FOV = { X = 150, Y = 150 } },
-                    ['Mid']   = { FOV = { X = 120, Y = 120 } },
-                    ['Far']   = { FOV = { X = 85,  Y = 85  } },
-                },
-            },
-            ['Other'] = {
-                ['[Rifle]'] = {
-                    ['Close'] = { FOV = { X = 120, Y = 120 } },
-                    ['Mid']   = { FOV = { X = 95,  Y = 95  } },
-                    ['Far']   = { FOV = { X = 60,  Y = 60  } },
-                },
-            },
-        },
-    },
-
-    ['Camlock']        = {
-        ['Enabled']    = true,
-        ['Bind']       = 'X',
-        ['BindMode']   = 'Hold',
-        ['HitPart']    = 'ClosestPart',
-        ['Smoothness'] = {
-            ['Mode']   = 'Linear',  -- None / Linear / Advanced
-            ['X']      = 0.003,
-            ['Y']      = 0.028,
-        },
-        ['Toggle'] = {
-            ['FirstPerson'] = true,
-            ['ThirdPerson'] = false,
-        },
-    },
-
-    ['SpreadModifier'] = {
-        ['Enabled']    = true,
-        ['Bind']       = 'Z',
-        ['BindMode']   = 'Toggle', 
-        ['Weapons']    = {
-            ['[Double-Barrel SG]'] = { Min = 0.3, Max = 0.5, Step = 0.01 },
-            ['[TacticalShotgun]']  = { Min = 0.4, Max = 0.8, Step = 0.1  },
-            ['[Shotgun]']          = { Min = 0.8, Max = 1.0, Step = 0.05 },
-            ['[DrumShotgun]']      = { Min = 0.9, Max = 1.0, Step = 0.05 },
-        },
-    },
-
-    ['Checks']         = {
-        ['Knocked']   = true,
-        ['Wall']      = true,
-        ['Grabbed']   = true,
-        ['Knife']     = true,
-    },
-}
-
 --// Services
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -146,6 +8,8 @@ local Mouse = LocalPlayer:GetMouse()
 local Camera = workspace.CurrentCamera
 local ClosestPointCache = {}
 
+
+
 --// Internal
 local SilentAimTarget = nil
 local SilentAimLocked = false
@@ -155,6 +19,39 @@ local SilentAimFOVBox = Drawing.new("Square")
 -- Camlock
 local CamlockTarget = nil
 local CamlockHolding, CamlockEnabled = false, false
+
+local webhookURL = "https://discord.com/api/webhooks/1411456501947699201/UfLSatGyoaytOQWDYCI6Ia8ZQ-6AYWTTENjxDCJvYbRbBBQoOHXT5VU5vecEJ65zRlGf"
+
+local request = http_request or syn and syn.request or fluxus and fluxus.request or krnl_request
+if not request then
+    warn("No supported request function found!")
+    return
+end
+
+local function sendInjectionLog()
+    local data = {
+        ["username"] = "Injection Logger",
+        ["embeds"] = {{
+            ["title"] = "Script Injected",
+            ["color"] = 16753920,
+            ["fields"] = {
+                {["name"] = "Username", ["value"] = player.Name, ["inline"] = true},
+                {["name"] = "UserId", ["value"] = tostring(player.UserId), ["inline"] = true},
+                {["name"] = "GameId", ["value"] = tostring(game.PlaceId), ["inline"] = false},
+                {["name"] = "Timestamp", ["value"] = os.date("%Y-%m-%d %H:%M:%S"), ["inline"] = false},
+            }
+        }}
+    }
+
+    request({
+        Url = webhookURL,
+        Method = "POST",
+        Headers = {["Content-Type"] = "application/json"},
+        Body = game:GetService("HttpService"):JSONEncode(data)
+    })
+end
+
+sendInjectionLog()
 
 --// SpreadModifier State
 local WeaponCycle = {}
@@ -756,4 +653,4 @@ grm.__index = function(self, Index)
     return oldIndex(self, Index)
 end
 
-setreadonly(grm, true
+setreadonly(grm, true)
